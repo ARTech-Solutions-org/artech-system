@@ -69,15 +69,36 @@ export const users = pgTable(
     name: text("name").notNull(),
     email: text("email").notNull(),
     passwordHash: text("password_hash"),
-    department: department("department").notNull(),
+    department: department("department"),
     isHead: boolean("is_head").notNull().default(false),
+    isSuperAdmin: boolean("is_super_admin").notNull().default(false),
+    mustChangePassword: boolean("must_change_password").notNull().default(false),
     status: userStatus("status").notNull().default("pending"),
     phone: text("phone"),
     approvedBy: uuid("approved_by").references((): AnyPgColumn => users.id),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
+    lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     ...timestamps,
   },
-  (t) => [uniqueIndex("users_email_unique").on(sql`lower(${t.email})`)],
+  (t) => [
+    uniqueIndex("users_email_unique").on(sql`lower(${t.email})`),
+    check("users_department_required", sql`${t.isSuperAdmin} or ${t.department} is not null`),
+  ],
+);
+
+// id is the SHA-256 of the cookie token, so a leaked database row cannot be used as a cookie.
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: text("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("sessions_user_idx").on(t.userId)],
 );
 
 export const projects = pgTable(

@@ -75,6 +75,10 @@ Each phase ends with a demo and your sign-off before the next starts.
 - Department heads invite members, approve them, set access level, deactivate them.
 - Permission layer on the server: restricted fields are never sent to unauthorized roles.
 - **Done when:** each test user logs in and sees only what their role allows.
+- Email + password accounts (scrypt), database sessions, forced password change for new/reset accounts.
+  Super admin seeded with `npm run db:seed-admin` (login `admin`, change the default password before go-live).
+  Super admin manages everyone and sets heads; heads add/edit/reset/disable members of their own department.
+- **Status:** done.
 
 ### Phase 3 — Business + Accounting + Tech Head
 - Business: brief form, project list, installation date and progress dates.

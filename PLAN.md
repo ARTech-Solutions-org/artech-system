@@ -66,8 +66,9 @@ Each phase ends with a demo and your sign-off before the next starts.
 - Tables: `users`, `departments`, `projects`, `project_members`, `project_finance`,
   `project_schedule`, `milestones`, `flags`, `equipment`, `equipment_requests`,
   `installations`, `audit_log`.
-- One-time import from the current Google Sheets (projects, team, equipment, technician rows).
-- **Done when:** current data is visible in Postgres and matches the sheets.
+- No import: the old system never went live. Tables start empty; data is entered through the dashboard.
+- Schema: `dashboard/src/db/schema.ts`, migrations in `dashboard/drizzle/` (`npm run db:generate`, `npm run db:migrate`).
+- **Status:** done.
 
 ### Phase 2 — Login + user management
 - Login, sessions, role and department per user.

@@ -1,0 +1,2385 @@
+{
+  "name": "[Studio OS] 01 - Projects Hub",
+  "nodes": [
+    {
+      "id": "setup",
+      "name": "SETUP",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        40
+      ],
+      "parameters": {
+        "content": "## Studio OS v2\n\nSheets: Projects (8 cols), Team, Equipment (+ Date_Needed_Until), Technician\n\nActions:\n- Create → project + devices + technician row\n- Update → build/video links + status\n- Release → clear equipment reservation\n\nAuto-release every 30m when Date_Needed_Until passed",
+        "height": 320,
+        "width": 420
+      }
+    },
+    {
+      "id": "form-hub",
+      "name": "FORM — Projects Hub",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "studio-os-new-project",
+      "parameters": {
+        "formTitle": "Studio OS",
+        "formDescription": "Create projects, submit build/video links, or release equipment.",
+        "responseMode": "lastNode",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Action",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Create New Project"
+                  },
+                  {
+                    "option": "Update Project"
+                  },
+                  {
+                    "option": "Release Equipment"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "if-create",
+      "name": "IF — Create?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.Action }}",
+              "rightValue": "Create New Project",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "if-update",
+      "name": "IF — Update?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        420
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.Action }}",
+              "rightValue": "Update Project",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "form-create",
+      "name": "FORM — Create Details",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        160
+      ],
+      "parameters": {
+        "operation": "page",
+        "formTitle": "New Project",
+        "formDescription": "Deadline only (no start date). Next page: developer, devices, technician.",
+        "defineForm": "fields",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Project Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Assets",
+              "placeholder": "Waiting / Received / links"
+            },
+            {
+              "fieldLabel": "Deadline",
+              "fieldType": "date",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Status",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "New"
+                  },
+                  {
+                    "option": "Planning"
+                  },
+                  {
+                    "option": "Waiting Assets"
+                  },
+                  {
+                    "option": "Development"
+                  },
+                  {
+                    "option": "Internal Review"
+                  },
+                  {
+                    "option": "Client Review"
+                  },
+                  {
+                    "option": "Changes Required"
+                  },
+                  {
+                    "option": "Approved"
+                  },
+                  {
+                    "option": "Deployment"
+                  },
+                  {
+                    "option": "Completed"
+                  },
+                  {
+                    "option": "Blocked"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "read-team",
+      "name": "READ — Team",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        660,
+        160
+      ],
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1zzIknZ261MrcqmxWKLlbQ3FMKq5YM7xafmWCJAADZFo"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Team"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "collapse",
+      "name": "Collapse Team",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        160
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: { ok: true } }];"
+      }
+    },
+    {
+      "id": "read-equip-create",
+      "name": "READ — Equipment (Form)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1100,
+        160
+      ],
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1SOpTC6zINBOVdJW8rp7k1o00Dlx8Tl9Pw-2FC8Aqx6I"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Equipment"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "build-assign",
+      "name": "CODE — Build Assignment Form",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        160
+      ],
+      "parameters": {
+        "jsCode": "const teamRaw = $('READ — Team').all().map(i => i.json).filter(r => r.Name || r.Team_ID);\nconst equipmentRaw = $('READ — Equipment (Form)').all().map(i => i.json).filter(r => r.Equipment_ID || r.Equipment_Name);\n\nconst team = [];\nconst teamSeen = new Set();\nfor (const t of teamRaw) {\n  const k = String(t.Team_ID || t.Name).toLowerCase();\n  if (teamSeen.has(k)) continue;\n  teamSeen.add(k);\n  team.push(t);\n}\n\nconst equipment = [];\nconst eqSeen = new Set();\nfor (const e of equipmentRaw) {\n  const k = String(e.Equipment_ID).toLowerCase();\n  if (eqSeen.has(k)) continue;\n  eqSeen.add(k);\n  equipment.push(e);\n}\n\nconst teamOptions = team\n  .filter(t => String(t.Status || '') !== 'Off')\n  .map(t => ({ option: String(t.Name).trim() }))\n  .filter(o => o.option);\n\nconst none = [{ option: '(None)' }];\n\nfunction unitAvailable(e) {\n  const n = Number(e.Available);\n  if (Number.isFinite(n)) return Math.max(0, n);\n  const status = String(e.Status || 'Available');\n  if (['Broken', 'Maintenance', 'Installed', 'Reserved'].includes(status)) return 0;\n  const amount = Number(e.Amount);\n  return Number.isFinite(amount) && amount > 0 ? amount : 1;\n}\n\nconst byName = new Map();\nfor (const e of equipment) {\n  if (unitAvailable(e) <= 0) continue;\n  if (String(e.Date_Needed_Until || '').trim()) continue;\n  const name = String(e.Equipment_Name || '').trim();\n  if (!name) continue;\n  const cur = byName.get(name.toLowerCase()) || { name, available: 0 };\n  cur.available += unitAvailable(e);\n  byName.set(name.toLowerCase(), cur);\n}\n\nconst eqOptions = [];\nfor (const g of byName.values()) {\n  for (let q = 1; q <= g.available; q++) {\n    eqOptions.push({ option: g.name + ' | qty ' + q + ' (' + g.available + ' free)' });\n  }\n}\n\nreturn [{\n  json: {\n    form_fields: [\n      { fieldLabel: 'Assigned Developer', fieldType: 'dropdown', requiredField: true, fieldOptions: { values: teamOptions.length ? teamOptions : [{ option: 'No team found' }] } },\n      { fieldLabel: 'Technician', fieldType: 'dropdown', requiredField: false, fieldOptions: { values: none.concat(teamOptions) } },\n      { fieldLabel: 'Installation Date', fieldType: 'date', requiredField: false },\n      { fieldLabel: 'Devices Needed', fieldType: 'dropdown', requiredField: false, fieldOptions: { values: eqOptions.length ? [{ option: '(None)' }].concat(eqOptions) : [{ option: '(No equipment free)' }] } },\n      { fieldLabel: 'More Devices', fieldType: 'dropdown', requiredField: false, fieldOptions: { values: eqOptions.length ? [{ option: '(None)' }].concat(eqOptions) : [{ option: '(No equipment free)' }] } },\n    ],\n  },\n}];"
+      }
+    },
+    {
+      "id": "form-assign",
+      "name": "FORM — Assign Team & Equipment",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.2,
+      "position": [
+        1540,
+        160
+      ],
+      "webhookId": "studio-os-assign-team-equipment",
+      "parameters": {
+        "operation": "page",
+        "formTitle": "Team & Devices",
+        "formDescription": "Pick developer, optional technician/install date, and devices.",
+        "defineForm": "json",
+        "jsonOutput": "={{ $json.form_fields }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "norm-create",
+      "name": "Normalize Create Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        160
+      ],
+      "parameters": {
+        "jsCode": "const p1 = $('FORM — Create Details').first().json;\nconst p2 = $('FORM — Assign Team & Equipment').first().json;\n\nconst projectName = String(p1['Project Name'] || '').trim();\nif (!projectName) throw new Error('Project Name is required.');\n\nfunction parseDevice(raw) {\n  const v = String(raw || '').trim();\n  if (!v || v === '(None)' || v.includes('No equipment')) return null;\n  const m = v.match(/^(.+?)\\s*\\|\\s*qty\\s*(\\d+)/i);\n  if (m) return { name: m[1].trim(), qty: Number(m[2]) || 1 };\n  return { name: v, qty: 1 };\n}\n\nconst devices = [];\nfor (const k of ['Devices Needed', 'More Devices']) {\n  const d = parseDevice(p2[k]);\n  if (d) devices.push(d);\n}\n\nconst merged = new Map();\nfor (const d of devices) {\n  const k = d.name.toLowerCase();\n  merged.set(k, { name: d.name, qty: (merged.get(k)?.qty || 0) + d.qty });\n}\n\nconst developer = String(p2['Assigned Developer'] || '').trim();\nconst technician = String(p2.Technician || '').trim();\nconst installationDate = String(p2['Installation Date'] || '').trim();\nconst deadline = String(p1.Deadline || '').trim();\n\nreturn [{\n  json: {\n    project_name: projectName,\n    assets: String(p1.Assets || '').trim(),\n    assigned_developer: developer === 'No team found' ? '' : developer,\n    devices_needed: [...merged.values()].map(d => d.name + ' x' + d.qty).join(', ') || String(p1['Devices Needed Text'] || '').trim(),\n    device_requests: [...merged.values()],\n    deadline,\n    status: String(p1.Status || 'New').trim() || 'New',\n    technician: technician === '(None)' ? '' : technician,\n    installation_date: installationDate,\n    now: new Date().toISOString(),\n  },\n}];"
+      }
+    },
+    {
+      "id": "read-proj-create",
+      "name": "READ — Projects",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1980,
+        80
+      ],
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1KXfojWoFoRfeOsfwV3wwX48_kPqn3lD0seQjaGnqFVc"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Projects"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "read-equip-logic",
+      "name": "READ — Equipment (Logic)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1980,
+        200
+      ],
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1SOpTC6zINBOVdJW8rp7k1o00Dlx8Tl9Pw-2FC8Aqx6I"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Equipment"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "read-team-logic",
+      "name": "READ — Team (Logic)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1980,
+        320
+      ],
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1zzIknZ261MrcqmxWKLlbQ3FMKq5YM7xafmWCJAADZFo"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Team"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "process-create",
+      "name": "Process Create Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        160
+      ],
+      "parameters": {
+        "jsCode": "const input = $('Normalize Create Input').first().json;\nconst projects = $('READ — Projects').all().map(i => i.json).filter(r => r.Project_Name);\nconst equipment = $('READ — Equipment (Logic)').all().map(i => i.json).filter(r => r.Equipment_ID);\nconst team = $('READ — Team (Logic)').all().map(i => i.json).filter(r => r.Team_ID || r.Name);\n\nconst dup = projects.find(p => String(p.Project_Name || '').toLowerCase() === input.project_name.toLowerCase());\nif (dup) {\n  return [{ json: { is_duplicate: true, summary: { message: 'Project name already exists', project_name: input.project_name } } }];\n}\n\nconst allowed = new Set([\"New\",\"Planning\",\"Waiting Assets\",\"Development\",\"Internal Review\",\"Client Review\",\"Changes Required\",\"Approved\",\"Deployment\",\"Completed\",\"Blocked\"]);\nlet status = input.status;\nif (!allowed.has(status)) status = 'New';\n\nconst projectRow = {\n  Project_Name: input.project_name,\n  Assets: input.assets,\n  Assigned_Developer: input.assigned_developer,\n  Devices_Needed: input.devices_needed,\n  Deadline: input.deadline,\n  Build_Link: '',\n  Video_Link: '',\n  Status: status,\n};\n\nconst equipmentRows = [];\nconst requests = input.device_requests || [];\n\nfunction unitAvailable(eq) {\n  const n = Number(eq.Available);\n  if (Number.isFinite(n)) return Math.max(0, n);\n  return String(eq.Status) === 'Available' ? (Number(eq.Amount) || 1) : 0;\n}\n\nfunction unitAmount(eq) {\n  const a = Number(eq.Amount);\n  return Number.isFinite(a) && a > 0 ? a : 1;\n}\n\nfor (const req of requests) {\n  const qty = Math.max(1, req.qty || 1);\n  const matches = equipment.filter(e => String(e.Equipment_Name).toLowerCase() === req.name.toLowerCase() && !String(e.Date_Needed_Until || '').trim());\n  const freeUnits = matches.filter(e => unitAvailable(e) > 0);\n  const take = freeUnits.slice(0, qty);\n  for (const eq of take) {\n    const avail = unitAvailable(eq);\n    const newAvail = Math.max(0, avail - 1);\n    equipmentRows.push({\n      Equipment_ID: eq.Equipment_ID,\n      Equipment_Name: eq.Equipment_Name,\n      Category: eq.Category || '',\n      Amount: unitAmount(eq),\n      Available: newAvail,\n      Status: newAvail > 0 ? 'Available' : 'Reserved',\n      Location: eq.Location || '',\n      Date_Needed_Until: input.deadline,\n      Notes: eq.Notes || '',\n    });\n  }\n}\n\nconst teamRows = [];\nif (input.assigned_developer) {\n  const dev = team.find(t => String(t.Name).toLowerCase() === input.assigned_developer.toLowerCase());\n  if (dev) {\n    teamRows.push({\n      Team_ID: dev.Team_ID,\n      Name: dev.Name,\n      Role: dev.Role || 'Developer',\n      Email: dev.Email || '',\n      Phone: dev.Phone || '',\n      Status: 'Working',\n      Current_Project: input.project_name,\n      Available_From: dev.Available_From || '',\n      Notes: dev.Notes || '',\n    });\n  }\n}\n\nconst technicianRows = [];\nif (input.technician && input.installation_date) {\n  technicianRows.push({\n    Technician_ID: 'TECH-' + Date.now().toString(36),\n    Project_Name: input.project_name,\n    Technician: input.technician,\n    Equipment_Needed: input.devices_needed,\n    Installation_Date: input.installation_date,\n    Status: 'Pending',\n    Notes: '',\n  });\n}\n\nreturn [{\n  json: {\n    is_duplicate: false,\n    project_row: projectRow,\n    equipment_rows: equipmentRows,\n    team_rows: teamRows,\n    technician_rows: technicianRows,\n    summary: { action: 'create', project_name: input.project_name, status, devices: input.devices_needed },\n  },\n}];"
+      }
+    },
+    {
+      "id": "if-dup",
+      "name": "IF — Duplicate?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2420,
+        160
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.is_duplicate }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "sum-dup",
+      "name": "Summary — Duplicate",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2640,
+        280
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "summary",
+              "value": "={{ JSON.stringify($json.summary) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "prep-proj",
+      "name": "Prepare Project Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        80
+      ],
+      "parameters": {
+        "jsCode": "const r=$input.first().json.project_row; return r?[{json:r}]:[];"
+      }
+    },
+    {
+      "id": "create-proj",
+      "name": "CREATE — Project",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2860,
+        80
+      ],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1KXfojWoFoRfeOsfwV3wwX48_kPqn3lD0seQjaGnqFVc"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Projects"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Project_Name",
+              "displayName": "Project_Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Assets",
+              "displayName": "Assets",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Assigned_Developer",
+              "displayName": "Assigned_Developer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Devices_Needed",
+              "displayName": "Devices_Needed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Deadline",
+              "displayName": "Deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Build_Link",
+              "displayName": "Build_Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Video_Link",
+              "displayName": "Video_Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "prep-eq",
+      "name": "Prepare Equipment Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2860,
+        200
+      ],
+      "parameters": {
+        "jsCode": "const rows=$('Process Create Logic').first().json.equipment_rows||[]; if(!rows.length) return [{json:{_skip:true}}]; return rows.map(r=>({json:r}));"
+      }
+    },
+    {
+      "id": "if-eq",
+      "name": "IF — Has Equipment?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3080,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json._skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "upd-eq",
+      "name": "UPDATE — Equipment",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3300,
+        120
+      ],
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1SOpTC6zINBOVdJW8rp7k1o00Dlx8Tl9Pw-2FC8Aqx6I"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Equipment"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "Equipment_ID"
+          ],
+          "schema": [
+            {
+              "id": "Equipment_ID",
+              "displayName": "Equipment_ID",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Equipment_Name",
+              "displayName": "Equipment_Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Available",
+              "displayName": "Available",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date_Needed_Until",
+              "displayName": "Date_Needed_Until",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "prep-team",
+      "name": "Prepare Team Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3080,
+        320
+      ],
+      "parameters": {
+        "jsCode": "const rows=$('Process Create Logic').first().json.team_rows||[]; if(!rows.length) return [{json:{_skip:true}}]; return rows.map(r=>({json:r}));"
+      }
+    },
+    {
+      "id": "if-team",
+      "name": "IF — Has Team?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3300,
+        320
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json._skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "upd-team",
+      "name": "UPDATE — Team",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3520,
+        320
+      ],
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1zzIknZ261MrcqmxWKLlbQ3FMKq5YM7xafmWCJAADZFo"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Team"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "Team_ID"
+          ],
+          "schema": [
+            {
+              "id": "Team_ID",
+              "displayName": "Team_ID",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Role",
+              "displayName": "Role",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Current_Project",
+              "displayName": "Current_Project",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Available_From",
+              "displayName": "Available_From",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "prep-tech",
+      "name": "Prepare Technician Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3520,
+        200
+      ],
+      "parameters": {
+        "jsCode": "const rows=$('Process Create Logic').first().json.technician_rows||[]; if(!rows.length) return [{json:{_skip:true}}]; return rows.map(r=>({json:r}));"
+      }
+    },
+    {
+      "id": "if-tech",
+      "name": "IF — Has Technician?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3740,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json._skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "create-tech",
+      "name": "CREATE — Technician",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3960,
+        200
+      ],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1KXfojWoFoRfeOsfwV3wwX48_kPqn3lD0seQjaGnqFVc"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Technician"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Technician_ID",
+              "displayName": "Technician_ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Project_Name",
+              "displayName": "Project_Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Technician",
+              "displayName": "Technician",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Equipment_Needed",
+              "displayName": "Equipment_Needed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Installation_Date",
+              "displayName": "Installation_Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "sum-create",
+      "name": "Summary — Created",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4180,
+        240
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "summary",
+              "value": "={{ JSON.stringify($(\"Process Create Logic\").first().json.summary) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "read-proj-upd",
+      "name": "READ — Projects For Update",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        660,
+        480
+      ],
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1KXfojWoFoRfeOsfwV3wwX48_kPqn3lD0seQjaGnqFVc"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Projects"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "read-team-upd",
+      "name": "READ — Team For Update",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        880,
+        480
+      ],
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1zzIknZ261MrcqmxWKLlbQ3FMKq5YM7xafmWCJAADZFo"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Team"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "build-upd",
+      "name": "CODE — Build Update Form",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        480
+      ],
+      "parameters": {
+        "jsCode": "const projects = $('READ — Projects For Update').all().map(i => i.json).filter(r => r.Project_Name);\nconst team = $('READ — Team For Update').all().map(i => i.json).filter(r => r.Name);\n\nconst projectOptions = projects.map(p => ({\n  option: [p.Project_Name, p.Status ? '(' + p.Status + ')' : '', p.Deadline ? 'due ' + p.Deadline : ''].filter(Boolean).join(' | '),\n}));\nif (!projectOptions.length) projectOptions.push({ option: 'No projects yet' });\n\nconst teamOptions = team.filter(t => String(t.Status) !== 'Off').map(t => ({ option: String(t.Name).trim() }));\nif (!teamOptions.length) teamOptions.push({ option: 'No team found' });\n\nconst statusOptions = [\"New\",\"Planning\",\"Waiting Assets\",\"Development\",\"Internal Review\",\"Client Review\",\"Changes Required\",\"Approved\",\"Deployment\",\"Completed\",\"Blocked\"].map(s => ({ option: s }));\n\nreturn [{\n  json: {\n    form_fields: [\n      { fieldLabel: 'Project', fieldType: 'dropdown', requiredField: true, fieldOptions: { values: projectOptions } },\n      { fieldLabel: 'Submitted By', fieldType: 'dropdown', requiredField: true, fieldOptions: { values: teamOptions } },\n      { fieldLabel: 'Build Link', fieldType: 'text' },\n      { fieldLabel: 'Video Link', fieldType: 'text' },\n      { fieldLabel: 'Status', fieldType: 'dropdown', fieldOptions: { values: statusOptions } },\n    ],\n  },\n}];"
+      }
+    },
+    {
+      "id": "form-upd",
+      "name": "FORM — Update Project",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.2,
+      "position": [
+        1320,
+        480
+      ],
+      "webhookId": "studio-os-update-project",
+      "parameters": {
+        "operation": "page",
+        "formTitle": "Update Project",
+        "formDescription": "Add build & video links, change status.",
+        "defineForm": "json",
+        "jsonOutput": "={{ $json.form_fields }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "process-upd",
+      "name": "Process Update Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        480
+      ],
+      "parameters": {
+        "jsCode": "const page = $('FORM — Update Project').first().json;\nconst projects = $('READ — Projects For Update').all().map(i => i.json).filter(r => r.Project_Name);\n\nconst label = String(page.Project || '').trim();\nif (!label || label.startsWith('No projects')) throw new Error('Pick a project.');\nconst projectName = label.split('|')[0].trim();\nconst existing = projects.find(p => String(p.Project_Name).trim() === projectName);\nif (!existing) throw new Error('Project not found');\n\nconst pick = (label, key) => {\n  const v = String(page[label] ?? '').trim();\n  return v || String(existing[key] || '');\n};\n\nconst allowed = new Set([\"New\",\"Planning\",\"Waiting Assets\",\"Development\",\"Internal Review\",\"Client Review\",\"Changes Required\",\"Approved\",\"Deployment\",\"Completed\",\"Blocked\"]);\nlet status = pick('Status', 'Status');\nif (!allowed.has(status)) status = existing.Status || 'Development';\n\nreturn [{\n  json: {\n    project_row: {\n      Project_Name: existing.Project_Name,\n      Assets: existing.Assets || '',\n      Assigned_Developer: existing.Assigned_Developer || '',\n      Devices_Needed: existing.Devices_Needed || '',\n      Deadline: existing.Deadline || '',\n      Build_Link: pick('Build Link', 'Build_Link'),\n      Video_Link: pick('Video Link', 'Video_Link'),\n      Status: status,\n    },\n    summary: { action: 'update', project_name: projectName, submitted_by: page['Submitted By'], status },\n  },\n}];"
+      }
+    },
+    {
+      "id": "prep-upd",
+      "name": "Prepare Update Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        480
+      ],
+      "parameters": {
+        "jsCode": "const r=$input.first().json.project_row; return [{json:r}];"
+      }
+    },
+    {
+      "id": "upd-proj",
+      "name": "UPDATE — Project",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1980,
+        480
+      ],
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1KXfojWoFoRfeOsfwV3wwX48_kPqn3lD0seQjaGnqFVc"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Projects"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "Project_Name"
+          ],
+          "schema": [
+            {
+              "id": "Project_Name",
+              "displayName": "Project_Name",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Assets",
+              "displayName": "Assets",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Assigned_Developer",
+              "displayName": "Assigned_Developer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Devices_Needed",
+              "displayName": "Devices_Needed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Deadline",
+              "displayName": "Deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Build_Link",
+              "displayName": "Build_Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Video_Link",
+              "displayName": "Video_Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "sum-upd",
+      "name": "Summary — Updated",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2200,
+        480
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "summary",
+              "value": "={{ JSON.stringify($(\"Process Update Logic\").first().json.summary) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "read-eq-rel",
+      "name": "READ — Equipment For Release",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        660,
+        640
+      ],
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1SOpTC6zINBOVdJW8rp7k1o00Dlx8Tl9Pw-2FC8Aqx6I"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Equipment"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "build-rel",
+      "name": "CODE — Build Release Form",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        640
+      ],
+      "parameters": {
+        "jsCode": "const equipment = $('READ — Equipment For Release').all().map(i => i.json).filter(r => r.Equipment_ID);\nconst reserved = equipment.filter(e => String(e.Date_Needed_Until || '').trim());\n\nconst options = reserved.map(e => ({\n  option: [e.Equipment_ID, e.Equipment_Name, 'until ' + e.Date_Needed_Until].join(' | '),\n}));\nif (!options.length) options.push({ option: 'Nothing reserved' });\n\nreturn [{\n  json: {\n    form_fields: [\n      { fieldLabel: 'Equipment', fieldType: 'dropdown', requiredField: true, fieldOptions: { values: options } },\n      { fieldLabel: 'Released By', fieldType: 'text', requiredField: true },\n    ],\n  },\n}];"
+      }
+    },
+    {
+      "id": "form-rel",
+      "name": "FORM — Release Equipment",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.2,
+      "position": [
+        1100,
+        640
+      ],
+      "webhookId": "studio-os-release-equipment",
+      "parameters": {
+        "operation": "page",
+        "formTitle": "Release Equipment",
+        "formDescription": "Free reserved gear early.",
+        "defineForm": "json",
+        "jsonOutput": "={{ $json.form_fields }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "process-rel",
+      "name": "Process Release Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        640
+      ],
+      "parameters": {
+        "jsCode": "const page = $('FORM — Release Equipment').first().json;\nconst equipment = $('READ — Equipment For Release').all().map(i => i.json);\n\nconst label = String(page.Equipment || '').trim();\nif (!label || label.startsWith('Nothing')) throw new Error('Pick equipment to release.');\nconst eqId = label.split('|')[0].trim();\nconst eq = equipment.find(e => String(e.Equipment_ID) === eqId);\nif (!eq) throw new Error('Equipment not found');\n\nconst amount = Number(eq.Amount) || 1;\nlet available = Number(eq.Available);\nif (!Number.isFinite(available)) available = 0;\navailable = Math.min(amount, available + 1);\n\nreturn [{\n  json: {\n    equipment_row: {\n      Equipment_ID: eq.Equipment_ID,\n      Equipment_Name: eq.Equipment_Name,\n      Category: eq.Category || '',\n      Amount: amount,\n      Available: available,\n      Status: 'Available',\n      Location: eq.Location || '',\n      Date_Needed_Until: '',\n      Notes: eq.Notes || '',\n    },\n    summary: { action: 'release', equipment_id: eqId, released_by: page['Released By'] },\n  },\n}];"
+      }
+    },
+    {
+      "id": "prep-rel",
+      "name": "Prepare Release Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        640
+      ],
+      "parameters": {
+        "jsCode": "const r=$input.first().json.equipment_row; return [{json:r}];"
+      }
+    },
+    {
+      "id": "upd-rel",
+      "name": "UPDATE — Release Equipment",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1760,
+        640
+      ],
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1SOpTC6zINBOVdJW8rp7k1o00Dlx8Tl9Pw-2FC8Aqx6I"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Equipment"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "Equipment_ID"
+          ],
+          "schema": [
+            {
+              "id": "Equipment_ID",
+              "displayName": "Equipment_ID",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Equipment_Name",
+              "displayName": "Equipment_Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Available",
+              "displayName": "Available",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date_Needed_Until",
+              "displayName": "Date_Needed_Until",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "sum-rel",
+      "name": "Summary — Released",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1980,
+        640
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "summary",
+              "value": "={{ JSON.stringify($(\"Process Release Logic\").first().json.summary) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "sched",
+      "name": "SCHEDULE — Auto Release",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        820
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "read-eq-auto",
+      "name": "READ — Equipment Auto",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        220,
+        820
+      ],
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1SOpTC6zINBOVdJW8rp7k1o00Dlx8Tl9Pw-2FC8Aqx6I"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Equipment"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "process-auto",
+      "name": "Process Auto Release",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        820
+      ],
+      "parameters": {
+        "jsCode": "const now = Date.now();\nconst equipment = $('READ — Equipment Auto').all().map(i => i.json).filter(r => r.Equipment_ID);\nconst rows = [];\n\nfor (const eq of equipment) {\n  const until = String(eq.Date_Needed_Until || '').trim();\n  if (!until) continue;\n  const end = new Date(until).getTime();\n  if (!end || end > now) continue;\n  const amount = Number(eq.Amount) || 1;\n  let available = Number(eq.Available);\n  if (!Number.isFinite(available)) available = 0;\n  available = Math.min(amount, available + 1);\n  rows.push({\n    Equipment_ID: eq.Equipment_ID,\n    Equipment_Name: eq.Equipment_Name,\n    Category: eq.Category || '',\n    Amount: amount,\n    Available: available,\n    Status: 'Available',\n    Location: eq.Location || '',\n    Date_Needed_Until: '',\n    Notes: eq.Notes || '',\n  });\n}\n\nreturn [{ json: { equipment_rows: rows, summary: { auto_released: rows.length }, _skip: rows.length === 0 } }];"
+      }
+    },
+    {
+      "id": "prep-auto",
+      "name": "Prepare Auto Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        820
+      ],
+      "parameters": {
+        "jsCode": "const rows=$input.first().json.equipment_rows||[]; if(!rows.length) return [{json:{_skip:true}}]; return rows.map(r=>({json:r}));"
+      }
+    },
+    {
+      "id": "if-auto",
+      "name": "IF — Auto Release?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        820
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json._skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "upd-auto",
+      "name": "UPDATE — Auto Release",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1100,
+        820
+      ],
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1SOpTC6zINBOVdJW8rp7k1o00Dlx8Tl9Pw-2FC8Aqx6I"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Equipment"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "Equipment_ID"
+          ],
+          "schema": [
+            {
+              "id": "Equipment_ID",
+              "displayName": "Equipment_ID",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Equipment_Name",
+              "displayName": "Equipment_Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Available",
+              "displayName": "Available",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date_Needed_Until",
+              "displayName": "Date_Needed_Until",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "sum-auto",
+      "name": "Summary — Auto",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1320,
+        820
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "summary",
+              "value": "={{ JSON.stringify($(\"Process Auto Release\").first().json.summary) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "FORM — Projects Hub": {
+      "main": [
+        [
+          {
+            "node": "IF — Create?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF — Create?": {
+      "main": [
+        [
+          {
+            "node": "FORM — Create Details",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF — Update?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF — Update?": {
+      "main": [
+        [
+          {
+            "node": "READ — Projects For Update",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "READ — Equipment For Release",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FORM — Create Details": {
+      "main": [
+        [
+          {
+            "node": "READ — Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "READ — Team": {
+      "main": [
+        [
+          {
+            "node": "Collapse Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collapse Team": {
+      "main": [
+        [
+          {
+            "node": "READ — Equipment (Form)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CODE — Build Assignment Form": {
+      "main": [
+        [
+          {
+            "node": "FORM — Assign Team & Equipment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FORM — Assign Team & Equipment": {
+      "main": [
+        [
+          {
+            "node": "Normalize Create Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Create Input": {
+      "main": [
+        [
+          {
+            "node": "READ — Projects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "READ — Projects": {
+      "main": [
+        [
+          {
+            "node": "READ — Equipment (Logic)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Create Logic": {
+      "main": [
+        [
+          {
+            "node": "IF — Duplicate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF — Duplicate?": {
+      "main": [
+        [
+          {
+            "node": "Summary — Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Project Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Project Row": {
+      "main": [
+        [
+          {
+            "node": "CREATE — Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CREATE — Project": {
+      "main": [
+        [
+          {
+            "node": "Prepare Equipment Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Equipment Rows": {
+      "main": [
+        [
+          {
+            "node": "IF — Has Equipment?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF — Has Equipment?": {
+      "main": [
+        [
+          {
+            "node": "UPDATE — Equipment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Team Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UPDATE — Equipment": {
+      "main": [
+        [
+          {
+            "node": "Prepare Team Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Team Rows": {
+      "main": [
+        [
+          {
+            "node": "IF — Has Team?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF — Has Team?": {
+      "main": [
+        [
+          {
+            "node": "UPDATE — Team",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Technician Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UPDATE — Team": {
+      "main": [
+        [
+          {
+            "node": "Prepare Technician Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Technician Rows": {
+      "main": [
+        [
+          {
+            "node": "IF — Has Technician?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF — Has Technician?": {
+      "main": [
+        [
+          {
+            "node": "CREATE — Technician",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Summary — Created",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CREATE — Technician": {
+      "main": [
+        [
+          {
+            "node": "Summary — Created",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "READ — Projects For Update": {
+      "main": [
+        [
+          {
+            "node": "READ — Team For Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "READ — Team For Update": {
+      "main": [
+        [
+          {
+            "node": "CODE — Build Update Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CODE — Build Update Form": {
+      "main": [
+        [
+          {
+            "node": "FORM — Update Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FORM — Update Project": {
+      "main": [
+        [
+          {
+            "node": "Process Update Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Update Logic": {
+      "main": [
+        [
+          {
+            "node": "Prepare Update Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Update Row": {
+      "main": [
+        [
+          {
+            "node": "UPDATE — Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UPDATE — Project": {
+      "main": [
+        [
+          {
+            "node": "Summary — Updated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "READ — Equipment For Release": {
+      "main": [
+        [
+          {
+            "node": "CODE — Build Release Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CODE — Build Release Form": {
+      "main": [
+        [
+          {
+            "node": "FORM — Release Equipment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FORM — Release Equipment": {
+      "main": [
+        [
+          {
+            "node": "Process Release Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Release Logic": {
+      "main": [
+        [
+          {
+            "node": "Prepare Release Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Release Row": {
+      "main": [
+        [
+          {
+            "node": "UPDATE — Release Equipment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UPDATE — Release Equipment": {
+      "main": [
+        [
+          {
+            "node": "Summary — Released",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SCHEDULE — Auto Release": {
+      "main": [
+        [
+          {
+            "node": "READ — Equipment Auto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "READ — Equipment Auto": {
+      "main": [
+        [
+          {
+            "node": "Process Auto Release",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Auto Release": {
+      "main": [
+        [
+          {
+            "node": "Prepare Auto Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Auto Rows": {
+      "main": [
+        [
+          {
+            "node": "IF — Auto Release?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF — Auto Release?": {
+      "main": [
+        [
+          {
+            "node": "UPDATE — Auto Release",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Summary — Auto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UPDATE — Auto Release": {
+      "main": [
+        [
+          {
+            "node": "Summary — Auto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "READ — Equipment (Form)": {
+      "main": [
+        [
+          {
+            "node": "CODE — Build Assignment Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "READ — Equipment (Logic)": {
+      "main": [
+        [
+          {
+            "node": "READ — Team (Logic)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "READ — Team (Logic)": {
+      "main": [
+        [
+          {
+            "node": "Process Create Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Africa/Cairo"
+  }
+}

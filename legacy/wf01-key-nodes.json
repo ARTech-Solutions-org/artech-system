@@ -1,0 +1,833 @@
+{
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Africa/Cairo",
+    "binaryMode": "separate"
+  },
+  "dump": {
+    "FORM — New Project": {
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        304
+      ],
+      "parameters": {
+        "formTitle": "Studio OS — New Project",
+        "formDescription": "Enter project details. On the next page you will pick team and equipment from Studio OS sheets.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Project Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Client",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Project Type",
+              "placeholder": "Activation / XR / Demo"
+            },
+            {
+              "fieldLabel": "Description",
+              "fieldType": "textarea"
+            },
+            {
+              "fieldLabel": "Technology",
+              "placeholder": "Unity / Unreal / Web"
+            },
+            {
+              "fieldLabel": "Start Date",
+              "fieldType": "date"
+            },
+            {
+              "fieldLabel": "Deadline",
+              "fieldType": "date"
+            },
+            {
+              "fieldLabel": "Priority",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Low"
+                  },
+                  {
+                    "option": "Medium"
+                  },
+                  {
+                    "option": "High"
+                  },
+                  {
+                    "option": "Critical"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Status",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "New"
+                  },
+                  {
+                    "option": "Planning"
+                  },
+                  {
+                    "option": "Waiting Assets"
+                  },
+                  {
+                    "option": "Development"
+                  },
+                  {
+                    "option": "Internal Review"
+                  },
+                  {
+                    "option": "Client Review"
+                  },
+                  {
+                    "option": "Changes Required"
+                  },
+                  {
+                    "option": "Approved"
+                  },
+                  {
+                    "option": "Deployment"
+                  },
+                  {
+                    "option": "Completed"
+                  },
+                  {
+                    "option": "Blocked"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Location"
+            },
+            {
+              "fieldLabel": "Client Assets",
+              "placeholder": "Waiting / Received / Partial"
+            },
+            {
+              "fieldLabel": "Notes",
+              "fieldType": "textarea"
+            }
+          ]
+        },
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "webhookId": "studio-os-new-project"
+    },
+    "READ — Projects": {
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        960,
+        64
+      ],
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1KXfojWoFoRfeOsfwV3wwX48_kPqn3lD0seQjaGnqFVc",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1778111496,
+          "mode": "list",
+          "cachedResultName": "Projects",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1KXfojWoFoRfeOsfwV3wwX48_kPqn3lD0seQjaGnqFVc/edit#gid=1778111496"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    "READ — Equipment": {
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        240,
+        400
+      ],
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1SOpTC6zINBOVdJW8rp7k1o00Dlx8Tl9Pw-2FC8Aqx6I",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1243002609,
+          "mode": "list",
+          "cachedResultName": "Equipment",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SOpTC6zINBOVdJW8rp7k1o00Dlx8Tl9Pw-2FC8Aqx6I/edit#gid=1243002609"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    "READ — Reservations": {
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        960,
+        528
+      ],
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1NqirW6xNUJHzMUu8JNlnxaV2jNxpAugZTn3tJJu07hA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 103464818,
+          "mode": "list",
+          "cachedResultName": "Reservations",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NqirW6xNUJHzMUu8JNlnxaV2jNxpAugZTn3tJJu07hA/edit#gid=103464818"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    "READ — Team": {
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        240,
+        208
+      ],
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1zzIknZ261MrcqmxWKLlbQ3FMKq5YM7xafmWCJAADZFo",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1001668082,
+          "mode": "list",
+          "cachedResultName": "Team",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zzIknZ261MrcqmxWKLlbQ3FMKq5YM7xafmWCJAADZFo/edit#gid=1001668082"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    "CREATE — Project": {
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1488,
+        128
+      ],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1KXfojWoFoRfeOsfwV3wwX48_kPqn3lD0seQjaGnqFVc",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1778111496,
+          "mode": "list",
+          "cachedResultName": "Projects",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1KXfojWoFoRfeOsfwV3wwX48_kPqn3lD0seQjaGnqFVc/edit#gid=1778111496"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Project_ID",
+              "displayName": "Project_ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Project_Name",
+              "displayName": "Project_Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Client",
+              "displayName": "Client",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Project_Type",
+              "displayName": "Project_Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Technology",
+              "displayName": "Technology",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Start_Date",
+              "displayName": "Start_Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Deadline",
+              "displayName": "Deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Developer",
+              "displayName": "Developer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Designer",
+              "displayName": "Designer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Installer",
+              "displayName": "Installer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Client_Assets_Status",
+              "displayName": "Client_Assets_Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Demo_Link",
+              "displayName": "Demo_Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Build_Link",
+              "displayName": "Build_Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Current_Blocker",
+              "displayName": "Current_Blocker",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Created_At",
+              "displayName": "Created_At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Updated_At",
+              "displayName": "Updated_At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Submission_Key",
+              "displayName": "Submission_Key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    "UPDATE — Equipment": {
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2640,
+        320
+      ],
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1SOpTC6zINBOVdJW8rp7k1o00Dlx8Tl9Pw-2FC8Aqx6I",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1243002609,
+          "mode": "list",
+          "cachedResultName": "Equipment",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SOpTC6zINBOVdJW8rp7k1o00Dlx8Tl9Pw-2FC8Aqx6I/edit#gid=1243002609"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "Equipment_ID"
+          ],
+          "schema": [
+            {
+              "id": "Equipment_ID",
+              "displayName": "Equipment_ID",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Equipment_Name",
+              "displayName": "Equipment_Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Current_Project",
+              "displayName": "Current_Project",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    "UPDATE — Team": {
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2496,
+        528
+      ],
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1zzIknZ261MrcqmxWKLlbQ3FMKq5YM7xafmWCJAADZFo",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1001668082,
+          "mode": "list",
+          "cachedResultName": "Team",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zzIknZ261MrcqmxWKLlbQ3FMKq5YM7xafmWCJAADZFo/edit#gid=1001668082"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "Team_ID"
+          ],
+          "schema": [
+            {
+              "id": "Team_ID",
+              "displayName": "Team_ID",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Role",
+              "displayName": "Role",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Current_Project",
+              "displayName": "Current_Project",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Available_From",
+              "displayName": "Available_From",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hPGaEBv6Ym0uVjSh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    "Summary — Project Created": {
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2736,
+        688
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a0",
+              "name": "status",
+              "value": "created",
+              "type": "string"
+            },
+            {
+              "id": "a1",
+              "name": "summary",
+              "value": "={{ JSON.stringify($('Process Project Logic').first().json.summary) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    "IF — Has Equipment Updates?": {
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2208,
+        368
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json._skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    "IF — Has Team Updates?": {
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1728,
+        576
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json._skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    "CODE — Build Assignment Form": {
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        304
+      ],
+      "parameters": {
+        "jsCode": "const team = $('READ — Team').all().map(i => i.json).filter(r => r.Name || r.Team_ID);\nconst equipment = $('READ — Equipment').all().map(i => i.json).filter(r => r.Equipment_ID || r.Equipment_Name);\n\nconst teamOptions = team\n  .filter(t => String(t.Status || '') !== 'Off')\n  .map(t => ({ option: String(t.Name).trim() }))\n  .filter(o => o.option);\n\nconst uniqueTeam = [];\nconst seen = new Set();\nfor (const o of teamOptions) {\n  const key = o.option.toLowerCase();\n  if (seen.has(key)) continue;\n  seen.add(key);\n  uniqueTeam.push(o);\n}\n\nconst none = [{ option: '(None)' }];\nconst availableEq = equipment.filter(e => {\n  const s = String(e.Status || 'Available');\n  return s === 'Available' || s === '';\n});\n\nconst eqOptions = availableEq.map(e => ({\n  option: String(e.Equipment_ID) + ' | ' + String(e.Equipment_Name) + (e.Location ? ' (' + e.Location + ')' : ''),\n}));\n\nconst form_fields = [\n  {\n    fieldLabel: 'Developer',\n    fieldType: 'dropdown',\n    requiredField: false,\n    fieldOptions: { values: none.concat(uniqueTeam) },\n  },\n  {\n    fieldLabel: 'Designer',\n    fieldType: 'dropdown',\n    requiredField: false,\n    fieldOptions: { values: none.concat(uniqueTeam) },\n  },\n  {\n    fieldLabel: 'Installer',\n    fieldType: 'dropdown',\n    requiredField: false,\n    fieldOptions: { values: none.concat(uniqueTeam) },\n  },\n  {\n    fieldLabel: 'Required Equipment',\n    fieldType: 'checkbox',\n    requiredField: false,\n    fieldOptions: {\n      values: eqOptions.length ? eqOptions : [{ option: '(No available equipment)' }],\n    },\n  },\n];\n\nif (!uniqueTeam.length) {\n  throw new Error('No team members found in Team sheet. Add rows first.');\n}\n\nreturn [{ json: { form_fields } }];"
+      }
+    },
+    "FORM — Assign Team & Equipment": {
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.2,
+      "position": [
+        544,
+        544
+      ],
+      "parameters": {},
+      "webhookId": "studio-os-assign-team-equipment"
+    }
+  },
+  "allNames": [
+    "SETUP",
+    "FORM — New Project",
+    "Normalize Form Input",
+    "READ — Projects",
+    "READ — Equipment",
+    "READ — Reservations",
+    "READ — Team",
+    "Process Project Logic",
+    "IF — Duplicate Submission?",
+    "Summary — Duplicate",
+    "Prepare Project Row",
+    "CREATE — Project",
+    "Prepare Equipment Rows",
+    "UPDATE — Equipment",
+    "Prepare Team Rows",
+    "UPDATE — Team",
+    "Summary — Project Created",
+    "IF — Has Equipment Updates?",
+    "IF — Has Team Updates?",
+    "CODE — Build Assignment Form",
+    "FORM — Assign Team & Equipment",
+    "Ensure Projects Continue",
+    "Ensure Reservations Continue"
+  ]
+}

@@ -1,0 +1,12 @@
+Equipment_ID,Equipment_Name,Category,Amount,Available,Status,Location,Date_Needed_Until,Notes
+EQ-001,Quest 3,XR Headset,1,1,Available,Studio A,,
+EQ-002,Quest 3,XR Headset,1,1,Available,Studio A,,
+EQ-003,Quest 2,XR Headset,1,1,Available,Studio B,,
+EQ-004,Touch Screen,Display,1,1,Available,Studio A,,
+EQ-005,Mini PC,Computer,1,1,Available,Warehouse,,
+EQ-006,Laptop,Computer,1,1,Available,Studio B,,
+EQ-007,Tablet,Computer,1,1,Available,Studio A,,
+EQ-008,Router,Network,1,1,Available,Warehouse,,
+EQ-009,UWB Sensor,Sensor,1,1,Available,Warehouse,,
+EQ-010,Camera,Capture,1,1,Available,Studio A,,
+EQ-011,Printer,Peripheral,1,1,Available,Office,,

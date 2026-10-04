@@ -1,0 +1,22 @@
+{
+  "comment": "One Google spreadsheet per CSV template (as you configured in n8n). Edit IDs here if sheets move.",
+  "tabs": {
+    "Projects": {
+      "docId": "16euefGvdllQh9yrV24HTCjtBPtJPs4l0uT9IP8BNkkY",
+      "sheetName": "Projects"
+    },
+    "Team": {
+      "docId": "1GrxxzPg0DilXLxOi4ap8Ar7hwl24k8Gp00sl-RYkeR0",
+      "sheetName": "Team"
+    },
+    "Technician": {
+      "docId": "1IvlOufwnpGmDJyva5GF_Z-j1XdW8mXsisiQYqfAnQvU",
+      "sheetName": "Technician"
+    },
+    "Equipment": {
+      "docId": "1Cq9G7E6Ow-ajTc_7MRS8yhTn4yzh7ELgVQSWZLCTmik",
+      "sheetName": "Equipment"
+    }
+  },
+  "templatesDir": "C:/n8n/studio-os/legacy/sheet-templates"
+}

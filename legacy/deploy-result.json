@@ -1,0 +1,20 @@
+[
+  {
+    "id": "CucijOQolo68IGMR",
+    "name": "[Studio OS] 01 - New Project",
+    "active": false,
+    "nodes": 25
+  },
+  {
+    "id": "OtdDEkXw0y9XKrxW",
+    "name": "[Studio OS] 02 - Project Monitor",
+    "active": false,
+    "nodes": 13
+  },
+  {
+    "id": "DYyqCV3OIrouZGIt",
+    "name": "[Studio OS] 03 - Review & Feedback",
+    "active": false,
+    "nodes": 16
+  }
+]

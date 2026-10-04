@@ -1,0 +1,30 @@
+Studio OS v2
+============
+
+Sheets (only these) — templates in sheet-templates/:
+- Projects.csv   → spreadsheet in sheets-config.json → tab "Projects"
+- Team.csv       → spreadsheet in sheets-config.json → tab "Team"
+- Equipment.csv  → spreadsheet in sheets-config.json → tab "Equipment"
+- Technician.csv → spreadsheet in sheets-config.json → tab "Technician"
+
+Sync templates + patch workflow (run after editing CSVs or sheet IDs):
+  cd C:\n8n\studio-os\legacy
+  $env:N8N_API_KEY = (Get-Content "$env:USERPROFILE\.cursor\mcp.json" -Raw | ConvertFrom-Json).mcpServers.'cursor-n8n-mcp'.env.N8N_API_KEY
+  node sync-and-apply.js
+
+Edit spreadsheet IDs in sheets-config.json if your Google Sheet URLs change.
+
+Deploy workflow only:
+  node deploy-v2.js
+
+Form (production — writes to sheets):
+  http://localhost:5678/form/studio-os-new-project
+
+Do NOT use "Test workflow" in n8n editor — use the form URL above.
+
+Actions:
+1. Create New Project — description, reference/voice note links, deadline, developer, devices, technician + location link
+2. Update Project — build link, video link, status
+3. Release Equipment — manual free when Date_Needed_Until set
+
+Auto-release: every 30 min when Date_Needed_Until passed.

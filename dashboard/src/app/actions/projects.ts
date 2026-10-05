@@ -386,23 +386,6 @@ export async function addMembers(_: FormState, formData: FormData): Promise<Form
   return { success: project.status === "brief_submitted" ? "Project assigned." : "Developers added." };
 }
 
-export async function setLead(formData: FormData) {
-  const me = await requireUser();
-  if (!canAssign(me)) throw new Error("Only the Tech Head can change the lead.");
-  const id = z.uuid().parse(formData.get("projectId"));
-  const userId = z.uuid().parse(formData.get("userId"));
-
-  await db.transaction(async (tx) => {
-    await tx.update(projectMembers).set({ role: "member" }).where(eq(projectMembers.projectId, id));
-    await tx
-      .update(projectMembers)
-      .set({ role: "lead" })
-      .where(and(eq(projectMembers.projectId, id), eq(projectMembers.userId, userId)));
-  });
-  await audit({ userId: me.id, action: "set_lead", entity: "project", entityId: id, changes: { lead: userId } });
-  refresh();
-}
-
 export async function removeMember(formData: FormData) {
   const me = await requireUser();
   if (!canAssign(me)) throw new Error("Only the Tech Head can remove developers.");

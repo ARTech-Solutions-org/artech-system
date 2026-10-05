@@ -3,7 +3,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { projectMembers, projects, projectSchedule } from "@/db/schema";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/lib/auth/session";
@@ -117,7 +116,6 @@ export default async function AssignmentsPage() {
                           <Link href={`/projects/${w.projectId}`} className="underline-offset-4 hover:underline">
                             {w.name}
                           </Link>
-                          {w.role === "lead" && <Badge variant="secondary">{t("Lead")}</Badge>}
                           <span className="text-muted-foreground">
                             {t(PROJECT_STATUS_LABELS[w.status])} · {t("Due {date}", { date: fmt.date(w.devDeadline) })}
                           </span>

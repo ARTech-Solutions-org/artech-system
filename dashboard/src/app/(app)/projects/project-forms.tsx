@@ -237,7 +237,6 @@ export function AddMembersForm({
         <thead>
           <tr className="text-start text-muted-foreground">
             <th className="w-10 pb-1 text-start font-normal">{t("Add")}</th>
-            <th className="w-12 pb-1 text-start font-normal">{t("Lead")}</th>
             <th className="pb-1 text-start font-normal">{t("Developer")}</th>
           </tr>
         </thead>
@@ -248,9 +247,6 @@ export function AddMembersForm({
                 <input type="checkbox" name="developers" value={d.id} aria-label={t("Add {name}", { name: d.name })} />
               </td>
               <td className="py-1">
-                <input type="radio" name="lead" value={d.id} aria-label={t("Make {name} lead", { name: d.name })} />
-              </td>
-              <td className="py-1">
                 {d.name}
                 {d.isHead && <span className="text-muted-foreground"> ({t("Tech Head")})</span>}
               </td>
@@ -258,11 +254,6 @@ export function AddMembersForm({
           ))}
         </tbody>
       </table>
-      <p className="text-xs text-muted-foreground">
-        {firstAssignment
-          ? t("If you don't pick a lead, the first selected developer becomes lead.")
-          : t("Picking a lead here replaces the current lead.")}
-      </p>
       <FormMessage state={state} />
       <Submit
         pending={pending}

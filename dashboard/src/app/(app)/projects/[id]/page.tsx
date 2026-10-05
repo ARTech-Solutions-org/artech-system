@@ -7,7 +7,6 @@ import {
   deleteMilestone,
   deleteProgressReview,
   removeMember,
-  setLead,
   toggleMilestone,
 } from "@/app/actions/projects";
 import { db } from "@/db";
@@ -223,19 +222,9 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
               <ul className="divide-y rounded-lg border">
                 {members.map((m) => (
                   <li key={m.userId} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                    <span className="flex items-center gap-2">
-                      {m.name}
-                      {m.role === "lead" && <Badge variant="secondary">{t("Lead")}</Badge>}
-                    </span>
+                    <span>{m.name}</span>
                     {assign && (
                       <span className="flex gap-1">
-                        {m.role !== "lead" && (
-                          <SmallAction
-                            action={setLead}
-                            fields={{ projectId: project.id, userId: m.userId }}
-                            label={t("Make lead")}
-                          />
-                        )}
                         <SmallAction
                           action={removeMember}
                           fields={{ projectId: project.id, userId: m.userId }}

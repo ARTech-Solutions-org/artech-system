@@ -118,11 +118,6 @@ export default async function Home() {
                     <Link href={`/projects/${p.id}`} className="font-medium underline-offset-4 hover:underline">
                       {p.name}
                     </Link>
-                    {p.role === "lead" && (
-                      <Badge variant="secondary" className="ms-2">
-                        {t("Lead")}
-                      </Badge>
-                    )}
                     <div className="text-muted-foreground">
                       {t(PROJECT_STATUS_LABELS[p.status])}
                       {p.nextMilestone && ` · ${t("next: {milestone}", { milestone: p.nextMilestone })}`}

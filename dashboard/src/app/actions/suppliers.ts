@@ -12,41 +12,36 @@ import { canManageSuppliers } from "@/lib/permissions";
 import type { FormState } from "./auth";
 
 const SupplierSchema = z.object({
-  name: z.string().trim().min(2, "Enter the supplier name."),
+  companyName: z.string().trim().min(2, "Enter the company name."),
+  name: z.string().trim().min(2, "Enter the contact name."),
   mobile: z
     .string()
     .trim()
-    .regex(/^\+?[\d\s-]{7,20}$/, "Enter a valid mobile number, e.g. 01012345678."),
-  equipment: z
-    .string()
-    .optional()
-    .transform((v) => [
-      ...new Set(
-        (v ?? "")
-          .split("\n")
-          .map((s) => s.trim())
-          .filter(Boolean),
-      ),
-    ]),
-  notes: z
+    .regex(/^\+?[\d\s-]{7,20}$/, "Enter a valid phone number, e.g. 01012345678."),
+  address: z
     .string()
     .trim()
     .optional()
     .transform((v) => v || null),
+  equipment: z.array(z.string()).transform((list) => [...new Set(list.map((s) => s.trim()).filter(Boolean))]),
 });
 
 const NOT_ALLOWED = "Only Business, Operations or the super admin can manage suppliers.";
 
 export async function saveSupplier(_: FormState, formData: FormData): Promise<FormState> {
   const me = await requireUser();
-  const values = Object.fromEntries(formData) as Record<string, string>;
+  const equipment = formData.getAll("equipment").map(String);
+  const values: Record<string, string> = { ...Object.fromEntries(formData), equipment: equipment.join("\n") } as Record<
+    string,
+    string
+  >;
   if (!canManageSuppliers(me)) return { error: NOT_ALLOWED, values };
 
   const id = z
     .union([z.literal(""), z.uuid()])
     .optional()
     .safeParse(values.id ?? "");
-  const parsed = SupplierSchema.safeParse(values);
+  const parsed = SupplierSchema.safeParse({ ...values, equipment });
   if (!id.success) return { error: "Supplier not found.", values };
   if (!parsed.success) return { error: firstIssue(parsed.error), values };
 
@@ -75,7 +70,7 @@ export async function saveSupplier(_: FormState, formData: FormData): Promise<Fo
     changes: parsed.data,
   });
   revalidatePath("/suppliers");
-  if (!id.data) return { success: "{name} added.", vars: { name: parsed.data.name } };
+  if (!id.data) return { success: "{name} added.", vars: { name: parsed.data.companyName } };
   return { success: "Saved.", values };
 }
 
@@ -84,7 +79,7 @@ export async function deleteSupplier(id: string): Promise<FormState> {
   if (!canManageSuppliers(me)) return { error: NOT_ALLOWED };
   if (!z.uuid().safeParse(id).success) return { error: "Supplier not found." };
 
-  const [removed] = await db.delete(suppliers).where(eq(suppliers.id, id)).returning({ name: suppliers.name });
+  const [removed] = await db.delete(suppliers).where(eq(suppliers.id, id)).returning({ name: suppliers.companyName });
   if (!removed) return { error: "Supplier not found." };
 
   await audit({ userId: me.id, action: "delete", entity: "supplier", entityId: id, changes: removed });

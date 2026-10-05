@@ -317,13 +317,14 @@ export const suppliers = pgTable(
   "suppliers",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    companyName: text("company_name").notNull().default(""),
     name: text("name").notNull(),
     mobile: text("mobile").notNull(),
+    address: text("address"),
     equipment: text("equipment")
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
-    notes: text("notes"),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     ...timestamps,
   },

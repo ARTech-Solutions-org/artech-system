@@ -1,5 +1,5 @@
 import { asc, ilike, or, sql } from "drizzle-orm";
-import { Phone, Search } from "lucide-react";
+import { Building2, MapPin, Phone, Search, User } from "lucide-react";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { suppliers } from "@/db/schema";
@@ -25,13 +25,15 @@ export default async function SuppliersPage(props: PageProps<"/suppliers">) {
     .where(
       q
         ? or(
+            ilike(suppliers.companyName, pattern),
             ilike(suppliers.name, pattern),
             ilike(suppliers.mobile, pattern),
+            ilike(suppliers.address, pattern),
             sql`exists (select 1 from unnest(${suppliers.equipment}) as item where item ilike ${pattern})`,
           )
         : undefined,
     )
-    .orderBy(asc(suppliers.name));
+    .orderBy(asc(suppliers.companyName));
 
   return (
     <div className="flex max-w-5xl flex-col gap-6">
@@ -48,9 +50,9 @@ export default async function SuppliersPage(props: PageProps<"/suppliers">) {
         <Input
           name="q"
           defaultValue={q}
-          placeholder={t("Search by name, mobile or equipment")}
+          placeholder={t("Search by company, name, phone or equipment")}
           className="ps-8"
-          aria-label={t("Search by name, mobile or equipment")}
+          aria-label={t("Search by company, name, phone or equipment")}
         />
       </form>
 
@@ -64,15 +66,29 @@ export default async function SuppliersPage(props: PageProps<"/suppliers">) {
         {rows.map((s) => (
           <Card key={s.id}>
             <CardHeader>
-              <CardTitle className="text-base font-semibold">{s.name}</CardTitle>
-              <a
-                href={`tel:${s.mobile.replace(/[\s-]/g, "")}`}
-                dir="ltr"
-                className="flex items-center gap-1.5 self-start text-sm text-muted-foreground hover:text-foreground"
-              >
-                <Phone className="size-3.5" />
-                {s.mobile}
-              </a>
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <Building2 className="size-4 text-muted-foreground" />
+                {s.companyName}
+              </CardTitle>
+              <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <User className="size-3.5" />
+                  {s.name}
+                </span>
+                <a
+                  href={`tel:${s.mobile.replace(/[\s-]/g, "")}`}
+                  className="flex items-center gap-1.5 self-start hover:text-foreground"
+                >
+                  <Phone className="size-3.5" />
+                  <span dir="ltr">{s.mobile}</span>
+                </a>
+                {s.address && (
+                  <span className="flex items-center gap-1.5">
+                    <MapPin className="size-3.5 shrink-0" />
+                    {s.address}
+                  </span>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="flex flex-col gap-3 text-sm">
               <div>
@@ -91,19 +107,19 @@ export default async function SuppliersPage(props: PageProps<"/suppliers">) {
                   <span className="text-muted-foreground">—</span>
                 )}
               </div>
-              {s.notes && <p className="text-muted-foreground">{s.notes}</p>}
               <EditSection label={t("Edit")}>
                 <div className="flex flex-col gap-4">
                   <SupplierForm
                     initial={{
                       id: s.id,
+                      companyName: s.companyName,
                       name: s.name,
                       mobile: s.mobile,
+                      address: s.address,
                       equipment: s.equipment.join("\n"),
-                      notes: s.notes,
                     }}
                   />
-                  <DeleteSupplierButton id={s.id} name={s.name} />
+                  <DeleteSupplierButton id={s.id} name={s.companyName} />
                 </div>
               </EditSection>
             </CardContent>

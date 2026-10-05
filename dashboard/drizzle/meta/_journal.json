@@ -78,6 +78,13 @@
       "when": 1791204102148,
       "tag": "0010_supplier_drop_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791207606678,
+      "tag": "0011_client_feedback",
+      "breakpoints": true
     }
   ]
 }

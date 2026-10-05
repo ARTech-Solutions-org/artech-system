@@ -1,9 +1,9 @@
 import { and, asc, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
 import Link from "next/link";
 import { db } from "@/db";
-import { equipment, flags, projects } from "@/db/schema";
+import { equipment, feedbackItems, flags, projects } from "@/db/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PROJECT_STATUS_LABELS, type ProjectStatus } from "@/lib/format";
+import { OPEN_FEEDBACK, PROJECT_STATUS_LABELS, type ProjectStatus } from "@/lib/format";
 import type { Msg } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 import { daysBetween, todayInCairo, whenLabel } from "@/lib/installations";
@@ -16,7 +16,7 @@ export async function Overview() {
   const { t, fmt } = await getI18n();
   const today = todayInCairo();
 
-  const [counts, [openFlags], deadlines, [units]] = await Promise.all([
+  const [counts, [openFlags], deadlines, [units], [feedback]] = await Promise.all([
     db
       .select({ status: projects.status, count: sql<number>`count(*)::int` })
       .from(projects)
@@ -38,6 +38,10 @@ export async function Overview() {
       })
       .from(equipment)
       .where(notInArray(equipment.status, ["retired"])),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(feedbackItems)
+      .where(inArray(feedbackItems.status, OPEN_FEEDBACK)),
   ]);
 
   const countOf = (s: ProjectStatus) => counts.find((c) => c.status === s)?.count ?? 0;
@@ -49,6 +53,7 @@ export async function Overview() {
   const tiles: { label: Msg; value: string | number; href: string; tone: string }[] = [
     { label: "Active projects", value: active, href: "/projects", tone: "bg-brand-black text-white" },
     { label: "Open requests", value: openFlags.count, href: "/requests", tone: "bg-brand-graphite text-white" },
+    { label: "Open client feedback", value: feedback.count, href: "/projects", tone: "bg-card ring-1 ring-border" },
     {
       label: "Past dev deadline",
       value: overdue,
@@ -69,7 +74,7 @@ export async function Overview() {
         <CardTitle>{t("Overview")}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {tiles.map((tile) => (
             <Link
               key={tile.label}

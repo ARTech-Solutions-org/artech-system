@@ -2,7 +2,16 @@ import "server-only";
 import { and, eq, inArray, or, type SQL } from "drizzle-orm";
 import { after } from "next/server";
 import { db } from "@/db";
-import { flagRecipients, flags, installations, projectMembers, projects, projectSchedule, users } from "@/db/schema";
+import {
+  feedbackItems,
+  flagRecipients,
+  flags,
+  installations,
+  projectMembers,
+  projects,
+  projectSchedule,
+  users,
+} from "@/db/schema";
 import { FLAG_TYPE_LABELS } from "@/lib/format";
 import { type OutgoingEmail, type Recipient, sendEmails } from "@/lib/mail";
 
@@ -338,6 +347,188 @@ export function notifyFlagCancelled(flagId: string, by: { id: string; name: stri
           f.details,
         ],
         link: FLAGS_LINK(t),
+      }),
+    }));
+  });
+}
+
+// Client feedback
+
+async function feedbackInfo(itemId: string) {
+  const [i] = await db
+    .select({
+      id: feedbackItems.id,
+      body: feedbackItems.body,
+      projectId: feedbackItems.projectId,
+      projectName: projects.name,
+      projectCreatedBy: projects.createdBy,
+      devDeadline: projects.devDeadline,
+      createdBy: feedbackItems.createdBy,
+      assigneeId: feedbackItems.assigneeId,
+      extraDays: feedbackItems.extraDays,
+      deadlineNote: feedbackItems.deadlineNote,
+    })
+    .from(feedbackItems)
+    .innerJoin(projects, eq(projects.id, feedbackItems.projectId))
+    .where(eq(feedbackItems.id, itemId));
+  return i;
+}
+
+const feedbackLink = (t: T, projectId: string) => ({
+  label: t("Open project"),
+  path: `${projectPath(projectId)}#feedback`,
+});
+
+/** Business heads plus whoever wrote the project's brief. */
+async function projectBusiness(projectId: string, exceptId?: string) {
+  const [p] = await db.select({ createdBy: projects.createdBy }).from(projects).where(eq(projects.id, projectId));
+  return unique(
+    await recipients(
+      or(
+        and(eq(users.department, "business"), eq(users.isHead, true)),
+        p?.createdBy ? eq(users.id, p.createdBy) : undefined,
+      ),
+      exceptId,
+    ),
+  );
+}
+
+/** One email per assignee, listing every item of the batch assigned to them. */
+export function notifyFeedbackAssigned(itemIds: string[], by: { id: string; name: string }) {
+  if (!itemIds.length) return;
+  later(async () => {
+    const items = (await Promise.all(itemIds.map(feedbackInfo))).filter((i) => i?.assigneeId);
+    const emails: OutgoingEmail[] = [];
+    for (const assigneeId of new Set(items.map((i) => i.assigneeId!))) {
+      const mine = items.filter((i) => i.assigneeId === assigneeId);
+      const { projectId, projectName } = mine[0];
+      for (const recipient of await recipients(eq(users.id, assigneeId), by.id)) {
+        emails.push({
+          event: "feedback_assigned",
+          recipient,
+          projectId,
+          content: (t: T) => ({
+            subject: t("Client feedback for you on {project}", { project: projectName }),
+            lines: [
+              t("{by} assigned you this client feedback:", { by: by.name }),
+              ...mine.map((i) => (mine.length > 1 ? `• ${i.body}` : i.body)),
+            ],
+            link: feedbackLink(t, projectId),
+          }),
+        });
+      }
+    }
+    return emails;
+  });
+}
+
+export function notifyFeedbackDone(itemId: string, by: { id: string; name: string }) {
+  later(async () => {
+    const i = await feedbackInfo(itemId);
+    const to = unique([
+      ...(i.createdBy ? await recipients(eq(users.id, i.createdBy), by.id) : []),
+      ...(await projectBusiness(i.projectId, by.id)),
+    ]);
+    return to.map((recipient) => ({
+      event: "feedback_done",
+      recipient,
+      projectId: i.projectId,
+      content: (t: T) => ({
+        subject: t("Ready for the client: feedback on {project}", { project: i.projectName }),
+        lines: [
+          t("{by} finished this client feedback:", { by: by.name }),
+          i.body,
+          t("Check it with the client, then mark it as client approved."),
+        ],
+        link: feedbackLink(t, i.projectId),
+      }),
+    }));
+  });
+}
+
+export function notifyScopeNeeded(projectId: string, bodies: string[], by: { id: string; name: string } | null) {
+  if (!bodies.length) return;
+  later(async () => {
+    const p = await projectInfo(projectId);
+    return (await projectBusiness(projectId, by?.id)).map((recipient) => ({
+      event: "feedback_scope",
+      recipient,
+      projectId,
+      content: (t: T) => ({
+        subject: t("New request on {project}: decide the scope", { project: p.name }),
+        lines: [
+          t(
+            "The client asked for something that is not in the brief. Decide if it is included, costs extra, or is rejected:",
+          ),
+          ...bodies,
+        ],
+        link: feedbackLink(t, projectId),
+      }),
+    }));
+  });
+}
+
+export function notifyDeadlineRequested(itemId: string, by: { id: string; name: string }) {
+  later(async () => {
+    const i = await feedbackInfo(itemId);
+    const to = await recipients(techHeads(), by.id);
+    return to.map((recipient) => ({
+      event: "feedback_deadline",
+      recipient,
+      projectId: i.projectId,
+      content: (t: T, fmt) => ({
+        subject: t("{project}: client feedback needs {count} more days", {
+          project: i.projectName,
+          count: i.extraDays ?? 0,
+        }),
+        lines: [
+          t("{by} says this client feedback adds {count} days to the dev deadline ({date}):", {
+            by: by.name,
+            count: i.extraDays ?? 0,
+            date: fmt.date(i.devDeadline),
+          }),
+          i.body,
+          ...(i.deadlineNote ? [t("Reason: {reason}", { reason: i.deadlineNote })] : []),
+          t("Apply or decline it on the project page."),
+        ],
+        link: feedbackLink(t, i.projectId),
+      }),
+    }));
+  });
+}
+
+export function notifyClientFeedback(projectId: string, clientName: string, bodies: string[]) {
+  later(async () => {
+    const p = await projectInfo(projectId);
+    return (await projectBusiness(projectId)).map((recipient) => ({
+      event: "feedback_from_client",
+      recipient,
+      projectId,
+      content: (t: T) => ({
+        subject: t("{client} sent feedback on {project}", { client: clientName, project: p.name }),
+        lines: [t("New feedback from the client link:"), ...bodies, t("Review it and assign it to someone.")],
+        link: feedbackLink(t, projectId),
+      }),
+    }));
+  });
+}
+
+export function notifyClientReopened(itemId: string, clientName: string, comment: string) {
+  later(async () => {
+    const i = await feedbackInfo(itemId);
+    const ids = [i.assigneeId, i.createdBy].filter((v) => v !== null);
+    const to = unique([
+      ...(ids.length ? await recipients(inArray(users.id, ids)) : []),
+      ...(await projectBusiness(i.projectId)),
+    ]);
+    return to.map((recipient) => ({
+      event: "feedback_reopened",
+      recipient,
+      projectId: i.projectId,
+      content: (t: T) => ({
+        subject: t("{client} says it's not right yet: {project}", { client: clientName, project: i.projectName }),
+        lines: [i.body, t("Client's comment: {comment}", { comment })],
+        link: feedbackLink(t, i.projectId),
       }),
     }));
   });

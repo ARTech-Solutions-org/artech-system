@@ -122,6 +122,8 @@ export const projects = pgTable(
     createdBy: uuid("created_by").references(() => users.id),
     assignedBy: uuid("assigned_by").references(() => users.id),
     assignedAt: timestamp("assigned_at", { withTimezone: true }),
+    // Secret part of the client's feedback link; null means the link is off.
+    clientToken: text("client_token").unique(),
     ...timestamps,
   },
   (t) => [uniqueIndex("projects_name_unique").on(sql`lower(${t.name})`), index("projects_status_idx").on(t.status)],
@@ -310,6 +312,103 @@ export const equipmentRequests = pgTable(
     index("equipment_requests_equipment_idx").on(t.equipmentId, t.status),
     index("equipment_requests_project_idx").on(t.projectId),
   ],
+);
+
+// Client feedback: every comment or edit the client asks for is one item, grouped into revision rounds.
+export const feedbackSource = pgEnum("feedback_source", [
+  "whatsapp",
+  "call",
+  "email",
+  "meeting",
+  "site_visit",
+  "client_link",
+]);
+export const feedbackType = pgEnum("feedback_type", ["design", "content", "technical", "new_request", "general"]);
+export const feedbackPriority = pgEnum("feedback_priority", ["normal", "urgent"]);
+// `awaiting_scope`: a new request not in the brief, waiting for Business to decide before anyone works on it.
+export const feedbackStatus = pgEnum("feedback_status", [
+  "awaiting_scope",
+  "new",
+  "in_progress",
+  "done",
+  "client_approved",
+  "rejected",
+]);
+export const scopeDecision = pgEnum("scope_decision", ["included", "extra_cost", "rejected"]);
+export const deadlineDecision = pgEnum("deadline_decision", ["applied", "declined"]);
+
+export const feedbackRounds = pgTable(
+  "feedback_rounds",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    number: integer("number").notNull(),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("feedback_rounds_project_number_unique").on(t.projectId, t.number)],
+);
+
+export const feedbackItems = pgTable(
+  "feedback_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    roundId: uuid("round_id")
+      .notNull()
+      .references(() => feedbackRounds.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    source: feedbackSource("source").notNull(),
+    type: feedbackType("type").notNull(),
+    priority: feedbackPriority("priority").notNull().default("normal"),
+    status: feedbackStatus("status").notNull(),
+    receivedOn: date("received_on").notNull(),
+    assigneeId: uuid("assignee_id").references(() => users.id, { onDelete: "set null" }),
+    // Set when the client wrote it through their feedback link.
+    clientName: text("client_name"),
+    scopeDecision: scopeDecision("scope_decision"),
+    scopeNote: text("scope_note"),
+    scopeDecidedBy: uuid("scope_decided_by").references(() => users.id, { onDelete: "set null" }),
+    scopeDecidedAt: timestamp("scope_decided_at", { withTimezone: true }),
+    // Extra days a developer says this item adds to the dev deadline; the Tech Head applies or declines it.
+    extraDays: integer("extra_days"),
+    deadlineNote: text("deadline_note"),
+    deadlineDecision: deadlineDecision("deadline_decision"),
+    deadlineDecidedBy: uuid("deadline_decided_by").references(() => users.id, { onDelete: "set null" }),
+    doneBy: uuid("done_by").references(() => users.id, { onDelete: "set null" }),
+    doneAt: timestamp("done_at", { withTimezone: true }),
+    // approvedBy is null with approvedAt set when the client approved it through their link.
+    approvedBy: uuid("approved_by").references(() => users.id, { onDelete: "set null" }),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    rejectReason: text("reject_reason"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (t) => [
+    check("feedback_items_extra_days_positive", sql`${t.extraDays} is null or ${t.extraDays} > 0`),
+    index("feedback_items_project_idx").on(t.projectId, t.status),
+    index("feedback_items_assignee_idx").on(t.assigneeId, t.status),
+  ],
+);
+
+export const feedbackComments = pgTable(
+  "feedback_comments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => feedbackItems.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    // Set instead of userId for comments the client wrote through their link.
+    clientName: text("client_name"),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("feedback_comments_item_idx").on(t.itemId)],
 );
 
 // Outside companies we rent equipment from; `equipment` lists what we rent from each one.

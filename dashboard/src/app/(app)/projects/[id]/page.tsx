@@ -40,6 +40,7 @@ import {
   canWorkOnProject,
 } from "@/lib/permissions";
 import { getProjectAccess, listDevelopers, listTechnicians } from "@/lib/projects";
+import { FeedbackSection } from "./feedback-section";
 import { Detail, EditSection, SmallAction } from "./project-ui";
 import { InstallationActions, StatusActions, WorkSections } from "./work-sections";
 import {
@@ -196,6 +197,8 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
           )}
         </CardContent>
       </Card>
+
+      <FeedbackSection me={me} project={project} isMember={isMember} />
 
       <Card>
         <CardHeader>

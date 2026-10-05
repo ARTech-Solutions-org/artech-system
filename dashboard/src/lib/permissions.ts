@@ -142,6 +142,32 @@ export function canRequestEquipment(v: Viewer): boolean {
   return v.isSuperAdmin || v.department === "development" || v.department === "operations";
 }
 
+// Client feedback
+
+/** Log what the client asked for, assign it, and start new revision rounds. */
+export function canLogFeedback(v: Viewer): boolean {
+  return v.isSuperAdmin || v.department === "business" || v.department === "operations";
+}
+
+export function canAssignFeedback(v: Viewer): boolean {
+  return canLogFeedback(v) || isTechHead(v);
+}
+
+/** Decide whether a new request is included, costs extra, or is rejected; confirm the client approved; turn the client link on or off. */
+export function canDecideFeedback(v: Viewer): boolean {
+  return v.isSuperAdmin || v.department === "business";
+}
+
+/** Move an item through in progress and done: developers on the project, the Tech Head, or whoever it is assigned to. */
+export function canWorkOnFeedback(v: Viewer, isMember: boolean, item: { assigneeId: string | null }): boolean {
+  return canWorkOnProject(v, isMember) || item.assigneeId === v.id;
+}
+
+/** Say an item adds days to the dev deadline; the Tech Head (canAssign) applies or declines it. */
+export function canRequestDeadlineChange(v: Viewer, isMember: boolean): boolean {
+  return canWorkOnProject(v, isMember);
+}
+
 /** View the supplier list and add, edit or remove suppliers. */
 export function canManageSuppliers(v: Viewer): boolean {
   return v.isSuperAdmin || v.department === "business" || v.department === "operations";

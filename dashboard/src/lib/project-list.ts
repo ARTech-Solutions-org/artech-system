@@ -3,6 +3,7 @@ import { asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { projectFinance, projectMembers, projects, projectSchedule, users } from "@/db/schema";
 import type { CurrentUser } from "@/lib/auth/session";
+import { openFeedbackCount } from "@/lib/feedback";
 import { canSeeAllProjects, canViewBudget, canViewInstallationDate } from "@/lib/permissions";
 
 /** Projects the user may see, with restricted columns only for roles allowed to see them. */
@@ -23,6 +24,7 @@ export async function listProjects(me: CurrentUser) {
       status: projects.status,
       devDeadline: projects.devDeadline,
       createdAt: projects.createdAt,
+      openFeedback: openFeedbackCount,
       ...(showBudget ? { budget: projectFinance.budget, currency: projectFinance.currency } : {}),
       ...(showInstallation ? { installationDate: projectSchedule.installationDate } : {}),
     })

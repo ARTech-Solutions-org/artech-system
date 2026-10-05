@@ -67,6 +67,7 @@ export default async function ProjectsPage() {
                   <TableHead>{t("Project")}</TableHead>
                   <TableHead>{t("Client")}</TableHead>
                   <TableHead>{t("Status")}</TableHead>
+                  <TableHead>{t("Client feedback")}</TableHead>
                   <TableHead>{t("Team")}</TableHead>
                   <TableHead>{t("Dev deadline")}</TableHead>
                   {showInstallation && <TableHead>{t("Installation")}</TableHead>}
@@ -86,6 +87,15 @@ export default async function ProjectsPage() {
                       <Badge variant={p.status === "brief_submitted" ? "outline" : "secondary"}>
                         {t(PROJECT_STATUS_LABELS[p.status])}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {p.openFeedback > 0 ? (
+                        <Link href={`/projects/${p.id}#feedback`}>
+                          <Badge variant="outline">{t("{count} open", { count: p.openFeedback })}</Badge>
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="max-w-48 truncate">{teamOf(p.id) || "—"}</TableCell>
                     <TableCell>{fmt.date(p.devDeadline)}</TableCell>

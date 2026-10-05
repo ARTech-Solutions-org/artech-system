@@ -5,10 +5,11 @@ import { projectMembers, projects } from "@/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/session";
-import { ACTIVE_STATUSES, PROJECT_STATUS_LABELS } from "@/lib/format";
+import { feedbackForBusiness, myOpenFeedback, openFeedbackCount } from "@/lib/feedback";
+import { ACTIVE_STATUSES, FEEDBACK_STATUS_LABELS, PROJECT_STATUS_LABELS } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { daysBetween, listInstallations, todayInCairo, whenLabel } from "@/lib/installations";
-import { canManageInstallation, canSeeAllProjects, roleTitle } from "@/lib/permissions";
+import { canDecideFeedback, canManageInstallation, canSeeAllProjects, roleTitle } from "@/lib/permissions";
 import { Overview } from "./overview";
 
 type Check = { name: string; ok: boolean; detail: string };
@@ -30,7 +31,8 @@ export default async function Home() {
   const operate = canManageInstallation(me);
 
   const today = todayInCairo();
-  const [checks, myProjects, upcoming] = await Promise.all([
+  const decide = canDecideFeedback(me);
+  const [checks, myProjects, upcoming, myFeedback, businessFeedback] = await Promise.all([
     me.isSuperAdmin ? systemChecks() : Promise.resolve([]),
     db
       .select({
@@ -47,6 +49,7 @@ export default async function Home() {
         openFlags: sql<number>`(
           select count(*) from flags f where f.project_id = "projects"."id" and f.status = 'open'
         )::int`,
+        openFeedback: openFeedbackCount,
       })
       .from(projectMembers)
       .innerJoin(projects, eq(projects.id, projectMembers.projectId))
@@ -57,6 +60,8 @@ export default async function Home() {
           rows.filter((r) => r.installationDate && !["installed", "completed"].includes(r.status)).slice(0, 6),
         )
       : Promise.resolve([]),
+    myOpenFeedback(me.id),
+    decide ? feedbackForBusiness() : Promise.resolve([]),
   ]);
 
   return (
@@ -67,6 +72,63 @@ export default async function Home() {
       </div>
 
       {canSeeAllProjects(me) && <Overview />}
+
+      {myFeedback.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("Client feedback for you")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y">
+              {myFeedback.map((f) => (
+                <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/projects/${f.projectId}#feedback-${f.id}`}
+                      className="font-medium underline-offset-4 hover:underline"
+                    >
+                      {f.projectName}
+                    </Link>
+                    <div className="line-clamp-2 text-muted-foreground">{f.body}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {f.priority === "urgent" && <Badge variant="destructive">{t("Urgent")}</Badge>}
+                    <Badge variant="outline">{t(FEEDBACK_STATUS_LABELS[f.status])}</Badge>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {businessFeedback.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("Client feedback waiting for Business")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y">
+              {businessFeedback.map((f) => (
+                <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/projects/${f.projectId}#feedback-${f.id}`}
+                      className="font-medium underline-offset-4 hover:underline"
+                    >
+                      {f.projectName}
+                    </Link>
+                    <div className="line-clamp-2 text-muted-foreground">{f.body}</div>
+                  </div>
+                  <Badge variant={f.status === "awaiting_scope" ? "destructive" : "outline"}>
+                    {f.status === "awaiting_scope" ? t("Decide scope") : t("Confirm with client")}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       {upcoming.length > 0 && (
         <Card>
@@ -124,6 +186,11 @@ export default async function Home() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {p.openFeedback > 0 && (
+                      <Link href={`/projects/${p.id}#feedback`}>
+                        <Badge variant="outline">{t("{count} feedback", { count: p.openFeedback })}</Badge>
+                      </Link>
+                    )}
                     {p.openFlags > 0 && (
                       <Badge variant="destructive">{t("{count} request(s)", { count: p.openFlags })}</Badge>
                     )}

@@ -45,6 +45,51 @@ export const USER_STATUS_LABELS = {
   disabled: "Disabled",
 } as const satisfies Record<string, Msg>;
 
+export const FEEDBACK_STATUS_LABELS = {
+  awaiting_scope: "Waiting for scope decision",
+  new: "New",
+  in_progress: "In progress",
+  done: "Done, waiting for client",
+  client_approved: "Client approved",
+  rejected: "Not doing",
+} as const satisfies Record<string, Msg>;
+
+export type FeedbackStatus = keyof typeof FEEDBACK_STATUS_LABELS;
+export const OPEN_FEEDBACK: FeedbackStatus[] = ["awaiting_scope", "new", "in_progress", "done"];
+
+/** What the client sees on their feedback link: no internal steps. */
+export const CLIENT_FEEDBACK_STATUS_LABELS = {
+  awaiting_scope: "Under review",
+  new: "Received by our team",
+  in_progress: "In progress",
+  done: "Ready for your review",
+  client_approved: "Approved",
+  rejected: "Not included",
+} as const satisfies Record<FeedbackStatus, Msg>;
+
+export const FEEDBACK_TYPE_LABELS = {
+  design: "Design",
+  content: "Content",
+  technical: "Technical",
+  new_request: "New request (not in the brief)",
+  general: "General",
+} as const satisfies Record<string, Msg>;
+
+export const FEEDBACK_SOURCE_LABELS = {
+  whatsapp: "WhatsApp",
+  call: "Phone call",
+  email: "Email",
+  meeting: "Meeting",
+  site_visit: "Site visit",
+  client_link: "Client link",
+} as const satisfies Record<string, Msg>;
+
+export const SCOPE_DECISION_LABELS = {
+  included: "Included in the project",
+  extra_cost: "Extra cost",
+  rejected: "Rejected",
+} as const satisfies Record<string, Msg>;
+
 /** Statuses that still count toward a developer's workload. */
 export const ACTIVE_STATUSES: ProjectStatus[] = [
   "assigned",

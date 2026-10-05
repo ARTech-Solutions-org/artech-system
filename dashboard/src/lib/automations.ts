@@ -1,7 +1,16 @@
 import "server-only";
 import { and, eq, inArray, isNotNull, notInArray, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { equipment, equipmentRequests, flags, installations, projects, projectSchedule, users } from "@/db/schema";
+import {
+  equipment,
+  equipmentRequests,
+  feedbackItems,
+  flags,
+  installations,
+  projects,
+  projectSchedule,
+  users,
+} from "@/db/schema";
 import { ACTIVE_STATUSES, PROJECT_STATUS_LABELS, type ProjectStatus } from "@/lib/format";
 import type { Msg } from "@/lib/i18n";
 import { daysBetween, todayInCairo } from "@/lib/installations";
@@ -186,8 +195,51 @@ export async function runDaily() {
     }
   }
 
+  emails.push(...(await feedbackSummary(today)));
+
   const result = await sendEmails(emails);
   return { date: today, emails: emails.length, ...result };
+}
+
+/** One email per Business person listing client feedback that waits on them: scope decisions and client approvals. */
+async function feedbackSummary(today: string): Promise<OutgoingEmail[]> {
+  const rows = await db
+    .select({
+      projectId: projects.id,
+      projectName: projects.name,
+      createdBy: projects.createdBy,
+      scope: sql<number>`count(*) filter (where ${feedbackItems.status} = 'awaiting_scope')::int`,
+      done: sql<number>`count(*) filter (where ${feedbackItems.status} = 'done')::int`,
+    })
+    .from(feedbackItems)
+    .innerJoin(projects, eq(projects.id, feedbackItems.projectId))
+    .where(inArray(feedbackItems.status, ["awaiting_scope", "done"]))
+    .groupBy(projects.id);
+  if (!rows.length) return [];
+
+  const businessHeads = await recipients(and(eq(users.department, "business"), eq(users.isHead, true)));
+  const creators = await recipients(
+    inArray(users.id, [...new Set(rows.map((r) => r.createdBy).filter((id) => id !== null))]),
+  );
+  const headIds = new Set(businessHeads.map((h) => h.id));
+
+  return unique([...businessHeads, ...creators]).map((recipient) => {
+    const mine = headIds.has(recipient.id) ? rows : rows.filter((r) => r.createdBy === recipient.id);
+    return {
+      event: "feedback_summary",
+      dedupeKey: `feedback_summary:${recipient.id}:${today}`,
+      recipient,
+      content: (t) => ({
+        subject: t("Client feedback waiting for you"),
+        lines: mine.flatMap((r) => [
+          r.projectName,
+          ...(r.scope ? [`• ${t("{count} item(s) need a scope decision", { count: r.scope })}`] : []),
+          ...(r.done ? [`• ${t("{count} item(s) done, confirm with the client", { count: r.done })}`] : []),
+        ]),
+        link: { label: t("Open dashboard"), path: "/" },
+      }),
+    };
+  });
 }
 
 /** Sunday morning: one summary per head and super admin. */

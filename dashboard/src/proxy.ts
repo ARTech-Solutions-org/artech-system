@@ -6,8 +6,10 @@ export function proxy(req: NextRequest) {
   const isLogin = req.nextUrl.pathname === "/login";
   // Called by n8n with a shared secret, checked in the route.
   const isAutomation = req.nextUrl.pathname.startsWith("/api/automations/");
+  // Client feedback pages are protected by the secret token in the URL.
+  const isClientLink = req.nextUrl.pathname.startsWith("/c/");
 
-  if (!hasSession && !isLogin && !isAutomation) {
+  if (!hasSession && !isLogin && !isAutomation && !isClientLink) {
     return NextResponse.redirect(new URL("/login", req.nextUrl));
   }
   return NextResponse.next();

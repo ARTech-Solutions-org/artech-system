@@ -48,7 +48,7 @@ export async function Overview() {
 
   const tiles: { label: Msg; value: string | number; href: string; alert?: boolean }[] = [
     { label: "Active projects", value: active, href: "/projects" },
-    { label: "Open flags", value: openFlags.count, href: "/flags", alert: openFlags.count > 0 },
+    { label: "Open requests", value: openFlags.count, href: "/requests", alert: openFlags.count > 0 },
     { label: "Past dev deadline", value: overdue, href: "/projects", alert: overdue > 0 },
     { label: "Equipment in use", value: `${units.inUse} / ${units.total}`, href: "/equipment" },
   ];

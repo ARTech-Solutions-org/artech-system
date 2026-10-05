@@ -4,6 +4,7 @@ import {
   cancelFlag,
   moveStatus,
   raiseFlag,
+  remindFlag,
   requestEquipment,
   resolveFlag,
   saveEquipment,
@@ -11,8 +12,8 @@ import {
   saveInstallation,
   translateText,
 } from "@/app/actions/work";
-import { Languages } from "lucide-react";
-import { useRef, useState, useTransition } from "react";
+import { BellRing, Languages, Plus, X } from "lucide-react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { Field, SelectField, Submit, useForm, type Values } from "@/components/form-fields";
 import { FormMessage } from "@/components/form-message";
 import { useI18n } from "@/components/i18n-provider";
@@ -22,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EQUIPMENT_STATUS_LABELS, FLAG_TYPE_LABELS } from "@/lib/format";
 import type { Locale, Msg } from "@/lib/i18n";
+
 export function RequestEquipmentForm({
   projectId,
   items,
@@ -65,13 +67,18 @@ export function RaiseFlagForm({
   projectId,
   projects,
   people,
+  onSent,
 }: {
   projectId?: string;
   projects?: { id: string; name: string }[];
   people: Person[];
+  onSent?: () => void;
 }) {
   const { t } = useI18n();
   const f = useForm(raiseFlag, { type: "needs_data" });
+  useEffect(() => {
+    if (f.state?.success) onSent?.();
+  }, [f.state, onSent]);
   return (
     <form key={f.key} action={f.formAction} className="grid gap-4 sm:grid-cols-2">
       {projectId ? (
@@ -113,7 +120,7 @@ export function RaiseFlagForm({
       />
       <div className="flex flex-col gap-2 sm:col-span-2">
         <FormMessage state={f.state} />
-        <Submit pending={f.pending} label={t("Send flag")} pendingLabel={t("Sending…")} variant="destructive" />
+        <Submit pending={f.pending} label={t("Send request")} pendingLabel={t("Sending…")} variant="destructive" />
       </div>
     </form>
   );
@@ -143,6 +150,62 @@ export function ResolveFlagForm({ flagId, userId, label }: { flagId: string; use
   );
 }
 
+export function RemindFlagForm({ flagId }: { flagId: string }) {
+  const { t } = useI18n();
+  const [state, action, pending] = useActionState(remindFlag, undefined);
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="id" value={flagId} />
+      <Button type="submit" variant="outline" size="sm" disabled={pending}>
+        <BellRing />
+        {pending ? t("Sending…") : t("Send reminder")}
+      </Button>
+      <FormMessage state={state} />
+    </form>
+  );
+}
+
+/** "New request" button that opens the request form in a dialog. */
+export function NewRequestButton(props: Omit<Parameters<typeof RaiseFlagForm>[0], "onSent">) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>
+        <Plus />
+        {t("New request")}
+      </Button>
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:pt-16"
+          onMouseDown={(e) => e.target === e.currentTarget && setOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("New request")}
+            className="w-full max-w-2xl rounded-xl border bg-background p-5 shadow-lg"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">{t("New request")}</h2>
+              <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label={t("Close")}>
+                <X />
+              </Button>
+            </div>
+            <RaiseFlagForm {...props} onSent={() => setOpen(false)} />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function CancelFlagForm({ flagId }: { flagId: string }) {
   const { t } = useI18n();
   const f = useForm(cancelFlag);
@@ -156,7 +219,7 @@ export function CancelFlagForm({ flagId }: { flagId: string }) {
         placeholder={t("e.g. Not needed anymore")}
         className="min-w-56 flex-1"
       />
-      <Submit pending={f.pending} label={t("Cancel flag")} pendingLabel={t("Saving…")} variant="outline" />
+      <Submit pending={f.pending} label={t("Cancel request")} pendingLabel={t("Saving…")} variant="outline" />
       <div className="basis-full">
         <FormMessage state={f.state} />
       </div>

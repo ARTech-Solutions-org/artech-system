@@ -281,7 +281,13 @@ export function DeadlineForm({ projectId, devDeadline }: { projectId: string; de
       <input type="hidden" name="projectId" value={projectId} />
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${projectId}-devDeadline`}>{t("Development deadline")}</Label>
-        <Input id={`${projectId}-devDeadline`} name="devDeadline" type="date" defaultValue={devDeadline ?? ""} className="w-44" />
+        <Input
+          id={`${projectId}-devDeadline`}
+          name="devDeadline"
+          type="date"
+          defaultValue={devDeadline ?? ""}
+          className="w-44"
+        />
       </div>
       <Submit pending={pending} label={t("Save deadline")} pendingLabel={t("Saving…")} />
       <div className="basis-full">

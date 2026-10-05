@@ -156,6 +156,7 @@ async function flagInfo(flagId: string) {
       details: flags.details,
       raisedBy: flags.raisedBy,
       cancelReason: flags.resolution,
+      createdAt: flags.createdAt,
     })
     .from(flags)
     .leftJoin(projects, eq(projects.id, flags.projectId))
@@ -177,7 +178,7 @@ async function flagInfo(flagId: string) {
 type FlagInfo = Awaited<ReturnType<typeof flagInfo>>;
 type T = Parameters<OutgoingEmail["content"]>[0];
 
-const FLAGS_LINK = (t: T) => ({ label: t("Open flags"), path: "/flags" });
+const FLAGS_LINK = (t: T) => ({ label: t("Open requests"), path: "/requests" });
 const flagTitle = (t: T, f: FlagInfo) =>
   f.projectName
     ? t("{type} on {project}", { type: t(FLAG_TYPE_LABELS[f.type]), project: f.projectName })
@@ -205,12 +206,12 @@ export function notifyFlagRaised(flagId: string, by: { id: string; name: string 
         recipient,
         projectId: f.projectId ?? undefined,
         content: (t) => ({
-          subject: t("{by} sent you a flag: {title}", { by: by.name, title: flagTitle(t, f) }),
+          subject: t("{by} sent you a request: {title}", { by: by.name, title: flagTitle(t, f) }),
           lines: [
             t("{by} needs something from you:", { by: by.name }),
             f.details,
             ...(f.parts.length > 1 ? [t("Also sent to: {names}", { names })] : []),
-            t("Resolve your part on the Flags page once it's done."),
+            t("Resolve your part on the Requests page once it's done."),
           ],
           link: FLAGS_LINK(t),
         }),
@@ -220,8 +221,8 @@ export function notifyFlagRaised(flagId: string, by: { id: string; name: string 
         recipient,
         projectId: f.projectId ?? undefined,
         content: (t) => ({
-          subject: t("Flag for your team: {title}", { title: flagTitle(t, f) }),
-          lines: [t("{by} sent a flag to {names}:", { by: by.name, names }), f.details],
+          subject: t("Request for your team: {title}", { title: flagTitle(t, f) }),
+          lines: [t("{by} sent a request to {names}:", { by: by.name, names }), f.details],
           link: FLAGS_LINK(t),
         }),
       })),
@@ -247,7 +248,7 @@ export function notifyFlagResolved(
       projectId: f.projectId ?? undefined,
       content: (t) => ({
         subject: allDone
-          ? t("Flag resolved: {title}", { title: flagTitle(t, f) })
+          ? t("Request resolved: {title}", { title: flagTitle(t, f) })
           : t("{name} resolved their part: {title}", { name: part.name, title: flagTitle(t, f) }),
         lines: [
           by.id === partUserId
@@ -255,14 +256,58 @@ export function notifyFlagResolved(
             : t("{by} resolved {name}'s part:", { by: by.name, name: part.name }),
           part.resolution ?? "",
           allDone
-            ? t("Every part is done, so the flag is closed.")
+            ? t("Every part is done, so the request is closed.")
             : t("{done} of {total} part(s) done.", { done, total: f.parts.length }),
-          t("The flag:"),
+          t("The request:"),
           f.details,
         ],
         link: FLAGS_LINK(t),
       }),
     }));
+  });
+}
+
+export function notifyFlagReminder(flagId: string, by: { id: string; name: string }) {
+  later(async () => {
+    const f = await flagInfo(flagId);
+    const open = f.parts.filter((p) => p.status === "open");
+    const openIds = new Set(open.map((p) => p.userId));
+    const direct = await recipients(inArray(users.id, [...openIds]), by.id);
+    const heads = (await headsOf(open, by.id)).filter((h) => !h.id || !openIds.has(h.id));
+    const waitingOn = open.map((p) => p.name).join(", ");
+    const sentAt = (fmt: Parameters<OutgoingEmail["content"]>[1]) => fmt.dateTime(f.createdAt);
+    return [
+      ...direct.map((recipient): OutgoingEmail => ({
+        event: "flag_reminder",
+        recipient,
+        projectId: f.projectId ?? undefined,
+        content: (t, fmt) => ({
+          subject: t("Reminder: {by} is still waiting on your request: {title}", {
+            by: by.name,
+            title: flagTitle(t, f),
+          }),
+          lines: [
+            t("{by} sent you this request on {date} and is still waiting:", { by: by.name, date: sentAt(fmt) }),
+            f.details,
+            t("Resolve your part on the Requests page once it's done."),
+          ],
+          link: FLAGS_LINK(t),
+        }),
+      })),
+      ...unique(heads).map((recipient): OutgoingEmail => ({
+        event: "flag_reminder_head",
+        recipient,
+        projectId: f.projectId ?? undefined,
+        content: (t, fmt) => ({
+          subject: t("Reminder for your team: {title}", { title: flagTitle(t, f) }),
+          lines: [
+            t("{by} is still waiting on {names} since {date}:", { by: by.name, names: waitingOn, date: sentAt(fmt) }),
+            f.details,
+          ],
+          link: FLAGS_LINK(t),
+        }),
+      })),
+    ];
   });
 }
 
@@ -285,11 +330,11 @@ export function notifyFlagCancelled(flagId: string, by: { id: string; name: stri
       recipient,
       projectId: f.projectId ?? undefined,
       content: (t) => ({
-        subject: t("Flag cancelled: {title}", { title: flagTitle(t, f) }),
+        subject: t("Request cancelled: {title}", { title: flagTitle(t, f) }),
         lines: [
-          t("{by} cancelled this flag. No action is needed.", { by: by.name }),
+          t("{by} cancelled this request. No action is needed.", { by: by.name }),
           ...(f.cancelReason ? [t("Reason: {reason}", { reason: f.cancelReason })] : []),
-          t("The flag:"),
+          t("The request:"),
           f.details,
         ],
         link: FLAGS_LINK(t),

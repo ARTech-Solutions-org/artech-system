@@ -18,8 +18,8 @@ import {
   type Viewer,
 } from "@/lib/permissions";
 import { flagPeople, loadFlags, visibleFlagsWhere } from "@/lib/flags";
-import { FlagCard, toPeople } from "../../flags/flag-card";
-import { GuideForm, RaiseFlagForm, RequestEquipmentForm, StatusButtons } from "../work-forms";
+import { FlagCard, toPeople } from "../../requests/flag-card";
+import { GuideForm, NewRequestButton, RequestEquipmentForm, StatusButtons } from "../work-forms";
 import { Detail, EditSection, SmallAction } from "./project-ui";
 
 type Project = typeof projects.$inferSelect;
@@ -140,17 +140,17 @@ export async function WorkSections({ me, project, isMember }: Props) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            {t("Flags")}
+            {t("Requests")}
             {openFlags.length > 0 && (
               <Badge variant="destructive">{t("{count} open", { count: openFlags.length })}</Badge>
             )}
           </CardTitle>
           <CardDescription>
-            {t("Ask someone for what this project needs. Only the people involved see each flag.")}
+            {t("Ask someone for what this project needs. Only the people involved see each request.")}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {flagRows.length === 0 && <p className="text-sm text-muted-foreground">{t("No flags.")}</p>}
+          {flagRows.length === 0 && <p className="text-sm text-muted-foreground">{t("No requests.")}</p>}
           {openFlags.map((f) => (
             <FlagCard key={f.id} me={me} flag={f} showProject={false} />
           ))}
@@ -163,9 +163,9 @@ export async function WorkSections({ me, project, isMember }: Props) {
               </div>
             </EditSection>
           )}
-          <EditSection label={t("Send a flag")}>
-            <RaiseFlagForm projectId={project.id} people={toPeople(people)} />
-          </EditSection>
+          <div>
+            <NewRequestButton projectId={project.id} people={toPeople(people)} />
+          </div>
         </CardContent>
       </Card>
 

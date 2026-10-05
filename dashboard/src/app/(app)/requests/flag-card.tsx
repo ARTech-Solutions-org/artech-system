@@ -6,7 +6,7 @@ import type { LoadedFlag, flagPeople } from "@/lib/flags";
 import { FLAG_TYPE_LABELS } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { canCancelFlag, canResolveFlagPart, roleTitle, type Viewer } from "@/lib/permissions";
-import { CancelFlagForm, ResolveFlagForm } from "../projects/work-forms";
+import { CancelFlagForm, RemindFlagForm, ResolveFlagForm } from "../projects/work-forms";
 
 export const toPeople = (rows: Awaited<ReturnType<typeof flagPeople>>): Person[] =>
   rows.map((u) => ({ id: u.id, name: u.name, email: u.email, team: roleTitle(u) }));
@@ -104,12 +104,22 @@ export async function FlagCard({
       ))}
 
       {open && canCancelFlag(me, f) && (
-        <details className="text-sm">
-          <summary className="cursor-pointer text-muted-foreground">{t("Cancel this flag")}</summary>
-          <div className="mt-2">
-            <CancelFlagForm flagId={f.id} />
+        <div className="flex flex-col gap-2 border-t pt-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <RemindFlagForm flagId={f.id} />
+            {f.lastRemindedAt && (
+              <span className="text-xs text-muted-foreground">
+                {t("Last reminder: {date}", { date: fmt.dateTime(f.lastRemindedAt) })}
+              </span>
+            )}
           </div>
-        </details>
+          <details className="text-sm">
+            <summary className="cursor-pointer text-muted-foreground">{t("Cancel this request")}</summary>
+            <div className="mt-2">
+              <CancelFlagForm flagId={f.id} />
+            </div>
+          </details>
+        </div>
       )}
     </div>
   );

@@ -243,6 +243,7 @@ export const flags = pgTable(
     resolution: text("resolution"),
     resolvedBy: uuid("resolved_by").references(() => users.id),
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    lastRemindedAt: timestamp("last_reminded_at", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [index("flags_project_idx").on(t.projectId), index("flags_status_idx").on(t.status)],

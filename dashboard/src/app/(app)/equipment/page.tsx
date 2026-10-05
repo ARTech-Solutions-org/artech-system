@@ -52,14 +52,18 @@ export default async function EquipmentPage() {
     <div className="flex max-w-5xl flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold">{t("Equipment")}</h1>
-        <p className="text-muted-foreground">{t("Stock and who is using it. Request equipment from a project page.")}</p>
+        <p className="text-muted-foreground">
+          {t("Stock and who is using it. Request equipment from a project page.")}
+        </p>
       </div>
 
       {manage && (
         <Card>
           <CardHeader>
             <CardTitle>{t("Add equipment")}</CardTitle>
-            <CardDescription>{t("Use one entry per kind of item and set the quantity, e.g. 3 NFC readers.")}</CardDescription>
+            <CardDescription>
+              {t("Use one entry per kind of item and set the quantity, e.g. 3 NFC readers.")}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <EquipmentForm />

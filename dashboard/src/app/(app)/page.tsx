@@ -130,7 +130,7 @@ export default async function Home() {
                   </div>
                   <div className="flex items-center gap-2">
                     {p.openFlags > 0 && (
-                      <Badge variant="destructive">{t("{count} flag(s)", { count: p.openFlags })}</Badge>
+                      <Badge variant="destructive">{t("{count} request(s)", { count: p.openFlags })}</Badge>
                     )}
                     <span className="text-muted-foreground">{t("Due {date}", { date: fmt.date(p.devDeadline) })}</span>
                   </div>

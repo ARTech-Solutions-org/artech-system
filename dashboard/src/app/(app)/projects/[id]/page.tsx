@@ -70,57 +70,67 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
   const work = canWorkOnProject(me, isMember);
   const operate = canManageInstallation(me);
 
-  const [members, milestoneRows, reviews, [createdBy], [finance], entries, [schedule], developers, [install], technicians] =
-    await Promise.all([
-      db
-        .select({ userId: projectMembers.userId, name: users.name, role: projectMembers.role })
-        .from(projectMembers)
-        .innerJoin(users, eq(users.id, projectMembers.userId))
-        .where(eq(projectMembers.projectId, project.id))
-        .orderBy(asc(projectMembers.role), asc(users.name)),
-      db
-        .select()
-        .from(milestones)
-        .where(eq(milestones.projectId, project.id))
-        .orderBy(asc(milestones.dueDate), asc(milestones.createdAt)),
-      db
-        .select()
-        .from(progressReviews)
-        .where(eq(progressReviews.projectId, project.id))
-        .orderBy(asc(progressReviews.reviewDate)),
-      project.createdBy
-        ? db.select({ name: users.name }).from(users).where(eq(users.id, project.createdBy))
-        : Promise.resolve([]),
-      // Restricted data is only queried for roles allowed to see it.
-      showFinance
-        ? db.select().from(projectFinance).where(eq(projectFinance.projectId, project.id))
-        : Promise.resolve([]),
-      showFinance
-        ? db
-            .select()
-            .from(financeEntries)
-            .where(eq(financeEntries.projectId, project.id))
-            .orderBy(desc(financeEntries.entryDate), desc(financeEntries.createdAt))
-        : Promise.resolve([]),
-      showSchedule
-        ? db.select().from(projectSchedule).where(eq(projectSchedule.projectId, project.id))
-        : Promise.resolve([]),
-      assign ? listDevelopers() : Promise.resolve([]),
-      showSchedule
-        ? db
-            .select({
-              leadTechnicianId: installations.leadTechnicianId,
-              leadName: users.name,
-              startedAt: installations.startedAt,
-              completedAt: installations.completedAt,
-              notes: installations.notes,
-            })
-            .from(installations)
-            .leftJoin(users, eq(users.id, installations.leadTechnicianId))
-            .where(eq(installations.projectId, project.id))
-        : Promise.resolve([]),
-      operate ? listTechnicians() : Promise.resolve([]),
-    ]);
+  const [
+    members,
+    milestoneRows,
+    reviews,
+    [createdBy],
+    [finance],
+    entries,
+    [schedule],
+    developers,
+    [install],
+    technicians,
+  ] = await Promise.all([
+    db
+      .select({ userId: projectMembers.userId, name: users.name, role: projectMembers.role })
+      .from(projectMembers)
+      .innerJoin(users, eq(users.id, projectMembers.userId))
+      .where(eq(projectMembers.projectId, project.id))
+      .orderBy(asc(projectMembers.role), asc(users.name)),
+    db
+      .select()
+      .from(milestones)
+      .where(eq(milestones.projectId, project.id))
+      .orderBy(asc(milestones.dueDate), asc(milestones.createdAt)),
+    db
+      .select()
+      .from(progressReviews)
+      .where(eq(progressReviews.projectId, project.id))
+      .orderBy(asc(progressReviews.reviewDate)),
+    project.createdBy
+      ? db.select({ name: users.name }).from(users).where(eq(users.id, project.createdBy))
+      : Promise.resolve([]),
+    // Restricted data is only queried for roles allowed to see it.
+    showFinance
+      ? db.select().from(projectFinance).where(eq(projectFinance.projectId, project.id))
+      : Promise.resolve([]),
+    showFinance
+      ? db
+          .select()
+          .from(financeEntries)
+          .where(eq(financeEntries.projectId, project.id))
+          .orderBy(desc(financeEntries.entryDate), desc(financeEntries.createdAt))
+      : Promise.resolve([]),
+    showSchedule
+      ? db.select().from(projectSchedule).where(eq(projectSchedule.projectId, project.id))
+      : Promise.resolve([]),
+    assign ? listDevelopers() : Promise.resolve([]),
+    showSchedule
+      ? db
+          .select({
+            leadTechnicianId: installations.leadTechnicianId,
+            leadName: users.name,
+            startedAt: installations.startedAt,
+            completedAt: installations.completedAt,
+            notes: installations.notes,
+          })
+          .from(installations)
+          .leftJoin(users, eq(users.id, installations.leadTechnicianId))
+          .where(eq(installations.projectId, project.id))
+      : Promise.resolve([]),
+    operate ? listTechnicians() : Promise.resolve([]),
+  ]);
 
   const currency = finance?.currency ?? "EGP";
   const totals = totalsByCurrency(entries);
@@ -266,7 +276,12 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
                           variant="outline"
                         />
                         {assign && (
-                          <SmallAction action={deleteMilestone} fields={{ id: ms.id }} label={t("Delete")} variant="destructive" />
+                          <SmallAction
+                            action={deleteMilestone}
+                            fields={{ id: ms.id }}
+                            label={t("Delete")}
+                            variant="destructive"
+                          />
                         )}
                       </span>
                     ) : (
@@ -301,7 +316,12 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
                     {r.notes && <span className="text-muted-foreground"> · {r.notes}</span>}
                   </span>
                   {canEditInstallationDate(me) && (
-                    <SmallAction action={deleteProgressReview} fields={{ id: r.id }} label={t("Delete")} variant="destructive" />
+                    <SmallAction
+                      action={deleteProgressReview}
+                      fields={{ id: r.id }}
+                      label={t("Delete")}
+                      variant="destructive"
+                    />
                   )}
                 </li>
               ))}
@@ -387,7 +407,9 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
                 </p>
               </Detail>
               <Detail label={t("Outstanding")}>
-                <p className={`text-lg font-semibold tabular-nums ${due !== null && due < 0 ? "text-destructive" : ""}`}>
+                <p
+                  className={`text-lg font-semibold tabular-nums ${due !== null && due < 0 ? "text-destructive" : ""}`}
+                >
                   {due === null ? "—" : fmt.money(due, currency)}
                 </p>
               </Detail>
@@ -456,7 +478,12 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
                         </TableCell>
                         {canManageFinance(me) && (
                           <TableCell className="text-end">
-                            <SmallAction action={deleteFinanceEntry} fields={{ id: e.id }} label={t("Delete")} variant="destructive" />
+                            <SmallAction
+                              action={deleteFinanceEntry}
+                              fields={{ id: e.id }}
+                              label={t("Delete")}
+                              variant="destructive"
+                            />
                           </TableCell>
                         )}
                       </TableRow>

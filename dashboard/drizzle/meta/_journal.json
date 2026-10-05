@@ -50,6 +50,13 @@
       "when": 1791197525212,
       "tag": "0006_flag_recipients",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791199206385,
+      "tag": "0007_flag_reminders",
+      "breakpoints": true
     }
   ]
 }

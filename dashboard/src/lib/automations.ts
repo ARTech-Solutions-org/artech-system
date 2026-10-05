@@ -250,7 +250,7 @@ export async function runWeekly() {
             overdue.map((o) => `${o.name} (${fmt.date(o.devDeadline)})`),
           ),
           "",
-          t("Open flags: {count}", { count: openFlags.count }),
+          t("Open requests: {count}", { count: openFlags.count }),
           t("Equipment in use: {count} unit(s)", { count: inUse.units }),
         ],
         link: { label: t("Open dashboard"), path: "/" },

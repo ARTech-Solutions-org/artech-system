@@ -66,6 +66,7 @@ export async function loadFlags(where: SQL | undefined) {
       cancelReason: flags.resolution,
       closedByName: closer.name,
       closedAt: flags.resolvedAt,
+      lastRemindedAt: flags.lastRemindedAt,
     })
     .from(flags)
     .innerJoin(raiser, eq(raiser.id, flags.raisedBy))

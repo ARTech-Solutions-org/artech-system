@@ -25,7 +25,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const nav: { href: string; label: Msg; show: boolean; count?: number }[] = [
     { href: "/", label: "Home", show: ready },
     { href: "/projects", label: "Projects", show: ready },
-    { href: "/flags", label: "Flags", show: ready, count: openFlags },
+    { href: "/requests", label: "Requests", show: ready, count: openFlags },
     { href: "/assignments", label: "Assignments", show: ready && canAssign(me) },
     { href: "/installations", label: "Installations", show: ready && canViewInstallationDate(me) },
     { href: "/equipment", label: "Equipment", show: ready && (canRequestEquipment(me) || canManageEquipment(me)) },

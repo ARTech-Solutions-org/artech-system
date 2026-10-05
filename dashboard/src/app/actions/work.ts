@@ -20,7 +20,13 @@ import {
   canResolveFlagPart,
   canWorkOnProject,
 } from "@/lib/permissions";
-import { notifyFlagCancelled, notifyFlagRaised, notifyFlagResolved, notifyStatus } from "@/lib/notify";
+import {
+  notifyFlagCancelled,
+  notifyFlagRaised,
+  notifyFlagReminder,
+  notifyFlagResolved,
+  notifyStatus,
+} from "@/lib/notify";
 import { getProjectAccess } from "@/lib/projects";
 import { hasArabic, translate } from "@/lib/translate";
 import type { FormState } from "./auth";
@@ -181,8 +187,8 @@ const FlagSchema = z.object({
     .union([z.literal(""), z.uuid("Invalid project.")])
     .optional()
     .transform((v) => v || null),
-  type: z.enum(["blocked", "needs_data", "needs_assets", "other"], "Pick the flag type."),
-  recipients: z.array(z.uuid()).min(1, "Pick at least one person to send the flag to."),
+  type: z.enum(["blocked", "needs_data", "needs_assets", "other"], "Pick the request type."),
+  recipients: z.array(z.uuid()).min(1, "Pick at least one person to send the request to."),
   details: z.string().trim().min(5, "Describe what is needed."),
 });
 
@@ -195,13 +201,13 @@ export async function raiseFlag(_: FormState, formData: FormData): Promise<FormS
   const { recipients, ...flag } = parsed.data;
 
   if (flag.projectId && !(await getProjectAccess(me, flag.projectId))) {
-    return { error: "You cannot raise flags on this project.", values };
+    return { error: "You cannot raise requests on this project.", values };
   }
   const people = await db
     .select({ id: users.id })
     .from(users)
     .where(and(inArray(users.id, recipients), eq(users.status, "active")));
-  if (people.length !== recipients.length) return { error: "Pick at least one person to send the flag to.", values };
+  if (people.length !== recipients.length) return { error: "Pick at least one person to send the request to.", values };
 
   const created = await db.transaction(async (tx) => {
     const [row] = await tx
@@ -214,7 +220,7 @@ export async function raiseFlag(_: FormState, formData: FormData): Promise<FormS
   await audit({ userId: me.id, action: "raise", entity: "flag", entityId: created.id, changes: parsed.data });
   notifyFlagRaised(created.id, me);
   refresh();
-  return { success: "Flag sent." };
+  return { success: "Request sent." };
 }
 
 /** Resolves one recipient's part; the flag closes when every part is resolved. */
@@ -223,7 +229,7 @@ export async function resolveFlag(_: FormState, formData: FormData): Promise<For
   const id = z.uuid().safeParse(formData.get("id"));
   const userId = z.uuid().safeParse(formData.get("userId"));
   const resolution = z.string().trim().min(2, "Say how it was resolved.").safeParse(formData.get("resolution"));
-  if (!id.success || !userId.success) return { error: "Invalid flag." };
+  if (!id.success || !userId.success) return { error: "Invalid request." };
   if (!resolution.success) return { error: firstIssue(resolution.error) };
 
   const [part] = await db
@@ -232,9 +238,10 @@ export async function resolveFlag(_: FormState, formData: FormData): Promise<For
     .innerJoin(flags, eq(flags.id, flagRecipients.flagId))
     .innerJoin(users, eq(users.id, flagRecipients.userId))
     .where(and(eq(flagRecipients.flagId, id.data), eq(flagRecipients.userId, userId.data)));
-  if (!part || part.flagStatus !== "open" || part.status !== "open") return { error: "This flag is already resolved." };
+  if (!part || part.flagStatus !== "open" || part.status !== "open")
+    return { error: "This request is already resolved." };
   if (!canResolveFlagPart(me, { id: userId.data, department: part.department })) {
-    return { error: "You cannot resolve this flag." };
+    return { error: "You cannot resolve this request." };
   }
 
   const allDone = await db.transaction(async (tx) => {
@@ -264,18 +271,41 @@ export async function resolveFlag(_: FormState, formData: FormData): Promise<For
   });
   notifyFlagResolved(id.data, userId.data, me, allDone);
   refresh();
-  return { success: allDone ? "Resolved. Every part is done, so the flag is closed." : "Your part is resolved." };
+  return { success: allDone ? "Resolved. Every part is done, so the request is closed." : "Your part is resolved." };
+}
+
+const REMINDER_COOLDOWN_MS = 60 * 60 * 1000;
+
+/** Emails everyone who still has an open part, plus their heads. At most once an hour per request. */
+export async function remindFlag(_: FormState, formData: FormData): Promise<FormState> {
+  const me = await requireUser();
+  const id = z.uuid().safeParse(formData.get("id"));
+  if (!id.success) return { error: "Invalid request." };
+
+  const [flag] = await db.select().from(flags).where(eq(flags.id, id.data));
+  if (!flag || flag.status !== "open") return { error: "This request is already closed." };
+  if (!canCancelFlag(me, flag)) return { error: "Only the person who sent this request can send a reminder." };
+  const now = new Date();
+  if (flag.lastRemindedAt && now.getTime() - flag.lastRemindedAt.getTime() < REMINDER_COOLDOWN_MS) {
+    return { error: "A reminder was sent less than an hour ago. Try again later." };
+  }
+
+  await db.update(flags).set({ lastRemindedAt: now }).where(eq(flags.id, id.data));
+  await audit({ userId: me.id, action: "remind", entity: "flag", entityId: id.data });
+  notifyFlagReminder(id.data, me);
+  refresh();
+  return { success: "Reminder sent." };
 }
 
 export async function cancelFlag(_: FormState, formData: FormData): Promise<FormState> {
   const me = await requireUser();
   const id = z.uuid().safeParse(formData.get("id"));
-  if (!id.success) return { error: "Invalid flag." };
+  if (!id.success) return { error: "Invalid request." };
   const reason = String(formData.get("reason") ?? "").trim() || null;
 
   const [flag] = await db.select().from(flags).where(eq(flags.id, id.data));
-  if (!flag || flag.status !== "open") return { error: "This flag is already closed." };
-  if (!canCancelFlag(me, flag)) return { error: "Only the person who sent this flag can cancel it." };
+  if (!flag || flag.status !== "open") return { error: "This request is already closed." };
+  if (!canCancelFlag(me, flag)) return { error: "Only the person who sent this request can cancel it." };
 
   await db
     .update(flags)
@@ -284,7 +314,7 @@ export async function cancelFlag(_: FormState, formData: FormData): Promise<Form
   await audit({ userId: me.id, action: "cancel", entity: "flag", entityId: id.data, changes: { reason } });
   notifyFlagCancelled(id.data, me);
   refresh();
-  return { success: "Flag cancelled." };
+  return { success: "Request cancelled." };
 }
 
 // Installation guide (developers)

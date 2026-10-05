@@ -1,7 +1,6 @@
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { Download } from "lucide-react";
 import Link from "next/link";
-import { db } from "@/db";
-import { projectFinance, projectMembers, projects, projectSchedule, users } from "@/db/schema";
+import { selectClass } from "@/components/form-message";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,70 +8,52 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { requireUser } from "@/lib/auth/session";
 import { PROJECT_STATUS_LABELS } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
-import { canEditBrief, canSeeAllProjects, canViewBudget, canViewInstallationDate } from "@/lib/permissions";
+import { canEditBrief, canSeeAllProjects } from "@/lib/permissions";
+import { listProjects } from "@/lib/project-list";
 
 export default async function ProjectsPage() {
   const me = await requireUser();
   const { t, fmt, locale } = await getI18n();
-  const showBudget = canViewBudget(me);
-  const showInstallation = canViewInstallationDate(me);
-
-  const myProjectIds = db
-    .select({ id: projectMembers.projectId })
-    .from(projectMembers)
-    .where(eq(projectMembers.userId, me.id));
-
-  const rows = await db
-    .select({
-      id: projects.id,
-      name: projects.name,
-      clientName: projects.clientName,
-      status: projects.status,
-      devDeadline: projects.devDeadline,
-      createdAt: projects.createdAt,
-      // Restricted columns are only selected for roles allowed to see them.
-      ...(showBudget ? { budget: projectFinance.budget, currency: projectFinance.currency } : {}),
-      ...(showInstallation ? { installationDate: projectSchedule.installationDate } : {}),
-    })
-    .from(projects)
-    .leftJoin(projectFinance, eq(projectFinance.projectId, projects.id))
-    .leftJoin(projectSchedule, eq(projectSchedule.projectId, projects.id))
-    .where(canSeeAllProjects(me) ? undefined : inArray(projects.id, myProjectIds))
-    .orderBy(desc(projects.createdAt));
-
-  const members = rows.length
-    ? await db
-        .select({ projectId: projectMembers.projectId, name: users.name, role: projectMembers.role })
-        .from(projectMembers)
-        .innerJoin(users, eq(users.id, projectMembers.userId))
-        .where(
-          inArray(
-            projectMembers.projectId,
-            rows.map((r) => r.id),
-          ),
-        )
-        .orderBy(asc(projectMembers.role), asc(users.name))
-    : [];
-  const teamOf = (id: string) =>
-    members
-      .filter((m) => m.projectId === id)
-      .map((m) => m.name)
-      .join(locale === "ar" ? "، " : ", ");
+  const { rows, team, showBudget, showInstallation } = await listProjects(me);
+  const teamOf = (id: string) => team(id).join(locale === "ar" ? "، " : ", ");
 
   return (
     <div className="flex max-w-6xl flex-col gap-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">{t("Projects")}</h1>
           <p className="text-muted-foreground">
             {canSeeAllProjects(me) ? t("All projects") : t("Projects you are assigned to")}
           </p>
         </div>
-        {canEditBrief(me) && (
-          <Link href="/projects/new" className={buttonVariants()}>
-            {t("New brief")}
-          </Link>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {rows.length > 0 && (
+            <form action="/projects/export" method="get" className="flex items-center gap-2">
+              {showInstallation ? (
+                <select
+                  name="by"
+                  defaultValue="created"
+                  aria-label={t("Arrange quarters by")}
+                  className={`${selectClass} w-auto`}
+                >
+                  <option value="created">{t("Quarters by brief date")}</option>
+                  <option value="installation">{t("Quarters by installation date")}</option>
+                </select>
+              ) : (
+                <input type="hidden" name="by" value="created" />
+              )}
+              <button type="submit" className={buttonVariants({ variant: "outline" })}>
+                <Download />
+                {t("Download Excel")}
+              </button>
+            </form>
+          )}
+          {canEditBrief(me) && (
+            <Link href="/projects/new" className={buttonVariants()}>
+              {t("New brief")}
+            </Link>
+          )}
+        </div>
       </div>
 
       <Card>
@@ -110,7 +91,9 @@ export default async function ProjectsPage() {
                     <TableCell>{fmt.date(p.devDeadline)}</TableCell>
                     {showInstallation && <TableCell>{fmt.date(p.installationDate)}</TableCell>}
                     {showBudget && (
-                      <TableCell className="text-end tabular-nums">{fmt.money(p.budget, p.currency ?? "EGP")}</TableCell>
+                      <TableCell className="text-end tabular-nums">
+                        {fmt.money(p.budget, p.currency ?? "EGP")}
+                      </TableCell>
                     )}
                   </TableRow>
                 ))}

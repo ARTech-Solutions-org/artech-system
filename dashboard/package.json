@@ -13,6 +13,7 @@
     "db:seed-admin": "tsx scripts/seed-admin.ts",
     "db:seed-equipment": "tsx scripts/seed-equipment.ts",
     "db:seed-examples": "tsx scripts/seed-examples.ts",
+    "db:seed-test-users": "tsx scripts/seed-test-users.ts",
     "n8n:setup": "tsx scripts/setup-n8n.ts"
   },
   "dependencies": {

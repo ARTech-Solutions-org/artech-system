@@ -12,6 +12,7 @@ const PASSWORD = "Test1234";
 const TEST_USERS = [
   { name: "Test Business Head", email: "business.head@test.local", department: "business", isHead: true },
   { name: "Test Business", email: "business@test.local", department: "business", isHead: false },
+  { name: "Test Accounting Head", email: "accounting.head@test.local", department: "accounting", isHead: true },
   { name: "Test Accounting", email: "accounting@test.local", department: "accounting", isHead: false },
   { name: "Test Tech Head", email: "techhead@test.local", department: "development", isHead: true },
   { name: "Test Developer", email: "dev@test.local", department: "development", isHead: false },

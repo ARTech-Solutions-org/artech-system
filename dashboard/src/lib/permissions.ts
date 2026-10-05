@@ -93,6 +93,10 @@ export function canManageFinance(v: Viewer): boolean {
   return v.isSuperAdmin || v.department === "accounting";
 }
 
+export function canExportProjects(v: Viewer): boolean {
+  return v.isSuperAdmin || (v.isHead && (v.department === "business" || v.department === "accounting"));
+}
+
 export function canViewInstallationDate(v: Viewer): boolean {
   return (
     v.isSuperAdmin ||

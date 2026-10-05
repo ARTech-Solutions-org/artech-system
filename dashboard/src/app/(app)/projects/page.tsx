@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { requireUser } from "@/lib/auth/session";
 import { PROJECT_STATUS_LABELS } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
-import { canEditBrief, canSeeAllProjects } from "@/lib/permissions";
+import { canEditBrief, canExportProjects, canSeeAllProjects } from "@/lib/permissions";
 import { listProjects } from "@/lib/project-list";
 
 export default async function ProjectsPage() {
@@ -27,7 +27,7 @@ export default async function ProjectsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {rows.length > 0 && (
+          {rows.length > 0 && canExportProjects(me) && (
             <form action="/projects/export" method="get" className="flex items-center gap-2">
               {showInstallation ? (
                 <select

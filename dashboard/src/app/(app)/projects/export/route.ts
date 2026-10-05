@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth/session";
 import { PROJECT_STATUS_LABELS } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { todayInCairo } from "@/lib/installations";
+import { canExportProjects } from "@/lib/permissions";
 import { listProjects } from "@/lib/project-list";
 
 const cairoDate = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "Africa/Cairo" });
@@ -18,6 +19,7 @@ const QUARTER_FILL: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor:
 
 export async function GET(req: Request) {
   const me = await requireUser();
+  if (!canExportProjects(me)) return new Response("Forbidden", { status: 403 });
   const { t, locale } = await getI18n();
   const { rows, team, showBudget, showInstallation } = await listProjects(me);
   const byInstallation = showInstallation && new URL(req.url).searchParams.get("by") === "installation";

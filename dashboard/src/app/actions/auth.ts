@@ -9,14 +9,14 @@ import { audit } from "@/lib/audit";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, deleteCurrentSession, deleteUserSessions, requireUser } from "@/lib/auth/session";
 import { firstIssue, type Msg, type Vars } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n/server";
 
 /**
  * Messages are dictionary keys, translated where they are shown; `vars` fills their `{placeholders}`.
  * `values` echoes submitted fields back so a form can keep them after an error (React resets forms after actions).
  */
 export type FormState =
-  | { error?: Msg; success?: Msg; vars?: Vars; email?: string; values?: Record<string, string> }
-  | undefined;
+  { error?: Msg; success?: Msg; vars?: Vars; email?: string; values?: Record<string, string> } | undefined;
 
 const MAX_FAILURES = 10;
 const WINDOW_MS = 15 * 60 * 1000;
@@ -66,7 +66,10 @@ export async function login(_: FormState, formData: FormData): Promise<FormState
   }
 
   failures.delete(email);
-  await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
+  await db
+    .update(users)
+    .set({ lastLoginAt: new Date(), locale: await getLocale() })
+    .where(eq(users.id, user.id));
   await createSession(user.id);
   await audit({ userId: user.id, action: "login", entity: "user", entityId: user.id });
   redirect("/");

@@ -20,6 +20,7 @@ import { requireUser } from "@/lib/auth/session";
 import { isUniqueViolation } from "@/lib/db-errors";
 import { CURRENCIES } from "@/lib/format";
 import { firstIssue } from "@/lib/i18n";
+import { notifyAssigned } from "@/lib/notify";
 import {
   canAssign,
   canEditBrief,
@@ -232,7 +233,8 @@ export async function deleteFinanceEntry(formData: FormData) {
   const id = z.uuid().parse(formData.get("id"));
 
   const [deleted] = await db.delete(financeEntries).where(eq(financeEntries.id, id)).returning();
-  if (deleted) await audit({ userId: me.id, action: "delete", entity: "finance_entry", entityId: id, changes: deleted });
+  if (deleted)
+    await audit({ userId: me.id, action: "delete", entity: "finance_entry", entityId: id, changes: deleted });
   refresh();
 }
 
@@ -285,7 +287,13 @@ export async function addProgressReview(_: FormState, formData: FormData): Promi
     .insert(progressReviews)
     .values({ ...parsed.data, createdBy: me.id })
     .returning({ id: progressReviews.id });
-  await audit({ userId: me.id, action: "create", entity: "progress_review", entityId: created.id, changes: parsed.data });
+  await audit({
+    userId: me.id,
+    action: "create",
+    entity: "progress_review",
+    entityId: created.id,
+    changes: parsed.data,
+  });
   refresh();
   return { success: "Progress date added." };
 }
@@ -296,7 +304,8 @@ export async function deleteProgressReview(formData: FormData) {
   const id = z.uuid().parse(formData.get("id"));
 
   const [deleted] = await db.delete(progressReviews).where(eq(progressReviews.id, id)).returning();
-  if (deleted) await audit({ userId: me.id, action: "delete", entity: "progress_review", entityId: id, changes: deleted });
+  if (deleted)
+    await audit({ userId: me.id, action: "delete", entity: "progress_review", entityId: id, changes: deleted });
   refresh();
 }
 
@@ -308,10 +317,14 @@ export async function addMembers(_: FormState, formData: FormData): Promise<Form
 
   const id = projectId.safeParse(formData.get("projectId"));
   const picked = z.array(z.uuid()).safeParse(formData.getAll("developers"));
-  const lead = z.union([z.literal(""), z.uuid()]).optional().safeParse(formData.get("lead") ?? "");
+  const lead = z
+    .union([z.literal(""), z.uuid()])
+    .optional()
+    .safeParse(formData.get("lead") ?? "");
   if (!id.success || !picked.success || !lead.success) return { error: "Invalid selection." };
   if (!picked.data.length) return { error: "Pick at least one developer." };
-  if (lead.data && !picked.data.includes(lead.data)) return { error: "The lead must be one of the selected developers." };
+  if (lead.data && !picked.data.includes(lead.data))
+    return { error: "The lead must be one of the selected developers." };
 
   const [project] = await db
     .select({ status: projects.status, assignedAt: projects.assignedAt })
@@ -325,7 +338,7 @@ export async function addMembers(_: FormState, formData: FormData): Promise<Form
     .where(and(inArray(users.id, picked.data), eq(users.department, "development"), eq(users.status, "active")));
   if (valid.length !== picked.data.length) return { error: "Only active developers can be assigned." };
 
-  await db.transaction(async (tx) => {
+  const added = await db.transaction(async (tx) => {
     const existing = await tx
       .select({ userId: projectMembers.userId, role: projectMembers.role })
       .from(projectMembers)
@@ -358,8 +371,10 @@ export async function addMembers(_: FormState, formData: FormData): Promise<Form
         .set({ status: "assigned", assignedBy: me.id, assignedAt: project.assignedAt ?? new Date() })
         .where(eq(projects.id, id.data));
     }
+    return picked.data.filter((userId) => !existing.some((m) => m.userId === userId));
   });
 
+  notifyAssigned(id.data, added, me);
   await audit({
     userId: me.id,
     action: "add_members",
@@ -395,9 +410,7 @@ export async function removeMember(formData: FormData) {
   const userId = z.uuid().parse(formData.get("userId"));
 
   await db.transaction(async (tx) => {
-    await tx
-      .delete(projectMembers)
-      .where(and(eq(projectMembers.projectId, id), eq(projectMembers.userId, userId)));
+    await tx.delete(projectMembers).where(and(eq(projectMembers.projectId, id), eq(projectMembers.userId, userId)));
     const remaining = await tx
       .select({ userId: projectMembers.userId })
       .from(projectMembers)
@@ -472,7 +485,10 @@ export async function toggleMilestone(formData: FormData) {
   const id = z.uuid().parse(formData.get("id"));
   const done = formData.get("done") === "true";
 
-  const [milestone] = await db.select({ projectId: milestones.projectId }).from(milestones).where(eq(milestones.id, id));
+  const [milestone] = await db
+    .select({ projectId: milestones.projectId })
+    .from(milestones)
+    .where(eq(milestones.id, id));
   const access = milestone && (await getProjectAccess(me, milestone.projectId));
   if (!access || !canWorkOnProject(me, access.isMember)) throw new Error("You cannot update this milestone.");
 

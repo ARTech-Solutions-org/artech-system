@@ -38,11 +38,24 @@ services:
       DB_POSTGRESDB_USER: ${POSTGRES_USER}
       DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      # Scheduled workflows call the dashboard at this address ($env.DASHBOARD_URL).
+      DASHBOARD_URL: ${DASHBOARD_URL:-http://host.docker.internal:3000}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - n8n_data:/home/node/.n8n
     depends_on:
       postgres:
         condition: service_healthy
+
+  # Local test inbox: every email n8n sends shows up at http://localhost:8025 until the real SMTP sender is set.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: studio-os-mailpit
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"
 
   postgres-backup:
     image: prodrigestivill/postgres-backup-local:17

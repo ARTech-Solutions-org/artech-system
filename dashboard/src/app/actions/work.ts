@@ -21,6 +21,7 @@ import {
   canWorkOnProject,
   DEPARTMENTS,
 } from "@/lib/permissions";
+import { notifyFlagRaised, notifyFlagResolved, notifyStatus } from "@/lib/notify";
 import { getProjectAccess } from "@/lib/projects";
 import { hasArabic, translate } from "@/lib/translate";
 import type { FormState } from "./auth";
@@ -197,6 +198,7 @@ export async function raiseFlag(_: FormState, formData: FormData): Promise<FormS
     .values({ ...parsed.data, raisedBy: me.id })
     .returning({ id: flags.id });
   await audit({ userId: me.id, action: "raise", entity: "flag", entityId: created.id, changes: parsed.data });
+  notifyFlagRaised(created.id, me);
   refresh();
   return { success: "Flag raised." };
 }
@@ -225,6 +227,7 @@ export async function resolveFlag(_: FormState, formData: FormData): Promise<For
     entityId: id.data,
     changes: { resolution: resolution.data },
   });
+  notifyFlagResolved(id.data, me);
   refresh();
   return { success: "Flag resolved." };
 }
@@ -409,6 +412,7 @@ export async function moveStatus(_: FormState, formData: FormData): Promise<Form
     entityId: id.data,
     changes: { from, to: to.data },
   });
+  notifyStatus(id.data, to.data, me);
   refresh();
   return { success: "Status updated." };
 }

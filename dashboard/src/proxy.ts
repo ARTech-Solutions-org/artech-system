@@ -4,8 +4,10 @@ import { type NextRequest, NextResponse } from "next/server";
 export function proxy(req: NextRequest) {
   const hasSession = req.cookies.has("studio_session");
   const isLogin = req.nextUrl.pathname === "/login";
+  // Called by n8n with a shared secret, checked in the route.
+  const isAutomation = req.nextUrl.pathname.startsWith("/api/automations/");
 
-  if (!hasSession && !isLogin) {
+  if (!hasSession && !isLogin && !isAutomation) {
     return NextResponse.redirect(new URL("/login", req.nextUrl));
   }
   return NextResponse.next();

@@ -77,6 +77,8 @@ export const users = pgTable(
     mustChangePassword: boolean("must_change_password").notNull().default(false),
     status: userStatus("status").notNull().default("pending"),
     phone: text("phone"),
+    // Language for emails; follows the language picked in the dashboard.
+    locale: text("locale").notNull().default("en"),
     approvedBy: uuid("approved_by").references((): AnyPgColumn => users.id),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
@@ -322,4 +324,28 @@ export const auditLog = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("audit_log_entity_idx").on(t.entity, t.entityId), index("audit_log_created_idx").on(t.createdAt)],
+);
+
+export const notificationStatus = pgEnum("notification_status", ["pending", "sent", "failed", "skipped"]);
+
+// One row per email handed to n8n. `dedupeKey` stops scheduled reminders from going out twice for the same day.
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    event: text("event").notNull(),
+    dedupeKey: text("dedupe_key"),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    email: text("email").notNull(),
+    subject: text("subject").notNull(),
+    projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
+    status: notificationStatus("status").notNull().default("pending"),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("notifications_dedupe_unique").on(t.dedupeKey, t.email),
+    index("notifications_created_idx").on(t.createdAt),
+  ],
 );

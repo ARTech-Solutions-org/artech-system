@@ -36,6 +36,13 @@
       "when": 1791190530431,
       "tag": "0004_installation_steps_ar",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791191575479,
+      "tag": "0005_notifications",
+      "breakpoints": true
     }
   ]
 }

@@ -105,6 +105,8 @@ Each phase ends with a demo and your sign-off before the next starts.
 - Per-project view: equipment list, steps, demo video, location link.
 - Mark installing / installed.
 - **Done when:** the full pipeline runs end to end in the dashboard.
+- **Status: done.** Installations page: month calendar (weeks start Saturday), installing now, the month's list with lead technician, guide/demo readiness, equipment and location, and projects with no date yet. Operations starts the installation, marks it installed (or pauses back to ready), and records the lead technician and an installation report on the project page. Operations' Home shows upcoming installations.
+- **Arabic:** every page has an English/Arabic switch (sidebar and login page; saved in a cookie). Arabic pages are right-to-left with IBM Plex Sans Arabic. Translations live in `dashboard/src/lib/i18n/ar.ts`, keyed by the English text; the type checker fails if any UI text has no Arabic entry.
 
 ### Phase 6 — n8n automations
 - Dashboard sends events to n8n webhooks.

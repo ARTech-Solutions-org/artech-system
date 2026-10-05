@@ -9,6 +9,7 @@ import { audit } from "@/lib/audit";
 import { hashPassword } from "@/lib/auth/password";
 import { isUniqueViolation } from "@/lib/db-errors";
 import { deleteUserSessions, requireUser } from "@/lib/auth/session";
+import { firstIssue } from "@/lib/i18n";
 import { canManageUser, canManageUsersIn, canSetHead, DEPARTMENTS, type Viewer } from "@/lib/permissions";
 import type { FormState } from "./auth";
 
@@ -28,7 +29,7 @@ export async function createUser(_: FormState, formData: FormData): Promise<Form
   const raw = Object.fromEntries(formData) as Record<string, string>;
   const values = { ...raw, password: "" };
   const parsed = CreateUserSchema.safeParse(raw);
-  if (!parsed.success) return { error: parsed.error.issues[0].message, values };
+  if (!parsed.success) return { error: firstIssue(parsed.error), values };
   const d = parsed.data;
 
   if (!canManageUsersIn(me, d.department)) {
@@ -66,7 +67,10 @@ export async function createUser(_: FormState, formData: FormData): Promise<Form
   }
 
   revalidatePath("/users");
-  return { success: `${d.name} added. Share the temporary password; they will be asked to change it on first login.` };
+  return {
+    success: "{name} added. Share the temporary password; they will be asked to change it on first login.",
+    vars: { name: d.name },
+  };
 }
 
 async function loadManageableTarget(me: Viewer, targetId: string) {
@@ -96,7 +100,7 @@ const UpdateUserSchema = z.object({
 export async function updateUser(_: FormState, formData: FormData): Promise<FormState> {
   const me = await requireUser();
   const parsed = UpdateUserSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
   const d = parsed.data;
 
   const target = await loadManageableTarget(me, d.id);
@@ -141,7 +145,7 @@ export async function resetPassword(_: FormState, formData: FormData): Promise<F
   const id = z.uuid().safeParse(formData.get("id"));
   const password = tempPassword.safeParse(formData.get("password"));
   if (!id.success) return { error: "Invalid user." };
-  if (!password.success) return { error: password.error.issues[0].message };
+  if (!password.success) return { error: firstIssue(password.error) };
   if (id.data === me.id) return { error: "Use the Account page to change your own password." };
 
   const target = await loadManageableTarget(me, id.data);
@@ -154,5 +158,5 @@ export async function resetPassword(_: FormState, formData: FormData): Promise<F
   await deleteUserSessions(id.data);
   await audit({ userId: me.id, action: "reset_password", entity: "user", entityId: id.data });
 
-  return { success: `Password reset for ${target.name}. They must change it on next login.` };
+  return { success: "Password reset for {name}. They must change it on next login.", vars: { name: target.name } };
 }

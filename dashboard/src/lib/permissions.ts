@@ -1,3 +1,5 @@
+import type { Msg } from "@/lib/i18n";
+
 export const DEPARTMENTS = ["business", "accounting", "development", "operations"] as const;
 export type Department = (typeof DEPARTMENTS)[number];
 
@@ -8,28 +10,28 @@ export type Viewer = {
   isSuperAdmin: boolean;
 };
 
-export const DEPARTMENT_LABELS: Record<Department, string> = {
+export const DEPARTMENT_LABELS = {
   business: "Business",
   accounting: "Accounting",
   development: "Development",
   operations: "Operations",
-};
+} as const satisfies Record<Department, Msg>;
 
-const HEAD_TITLES: Record<Department, string> = {
+const HEAD_TITLES: Record<Department, Msg> = {
   business: "Business Head",
   accounting: "Accountant Manager",
   development: "Tech Head",
   operations: "Operations Manager",
 };
 
-const MEMBER_TITLES: Record<Department, string> = {
+const MEMBER_TITLES: Record<Department, Msg> = {
   business: "Business",
   accounting: "Accountant",
   development: "Developer",
   operations: "Operations",
 };
 
-export function roleTitle(v: Pick<Viewer, "department" | "isHead" | "isSuperAdmin">): string {
+export function roleTitle(v: Pick<Viewer, "department" | "isHead" | "isSuperAdmin">): Msg {
   if (v.isSuperAdmin) return "Super Admin";
   if (!v.department) return "No department";
   return v.isHead ? HEAD_TITLES[v.department] : MEMBER_TITLES[v.department];

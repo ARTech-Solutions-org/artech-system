@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { inUseQuantity } from "@/lib/equipment";
-import { FLAG_TYPE_LABELS as FLAG_LABELS, formatDate, formatDateTime } from "@/lib/format";
+import { FLAG_TYPE_LABELS, REQUEST_STATUS_LABELS } from "@/lib/format";
+import { getI18n } from "@/lib/i18n/server";
 import {
   canAssign,
   canManageEquipment,
@@ -25,42 +26,73 @@ import { Detail, EditSection, SmallAction } from "./project-ui";
 
 type Project = typeof projects.$inferSelect;
 type Props = { me: Viewer; project: Project; isMember: boolean };
-export function StatusActions({ me, project, isMember }: Props) {
+type Move = { to: string; label: string; variant?: "default" | "outline" };
+
+/** Development status moves: developers start and submit, the Tech Head approves or sends back. */
+export async function StatusActions({ me, project, isMember }: Props) {
   if (!canWorkOnProject(me, isMember)) return null;
+  const { t } = await getI18n();
   const head = canAssign(me);
-  const moves: { to: string; label: string; variant?: "default" | "outline" }[] = [];
+  const moves: Move[] = [];
 
   switch (project.status) {
     case "assigned":
-      moves.push({ to: "in_development", label: "Start development" });
+      moves.push({ to: "in_development", label: t("Start development") });
       break;
     case "in_development":
-      moves.push({ to: "internal_review", label: "Send for internal review" });
+      moves.push({ to: "internal_review", label: t("Send for internal review") });
       break;
     case "internal_review":
       if (head) {
-        moves.push({ to: "ready_for_installation", label: "Approve: ready for installation" });
-        moves.push({ to: "in_development", label: "Send back to development", variant: "outline" });
+        moves.push({ to: "ready_for_installation", label: t("Approve: ready for installation") });
+        moves.push({ to: "in_development", label: t("Send back to development"), variant: "outline" });
       }
       break;
     case "ready_for_installation":
-      if (head) moves.push({ to: "in_development", label: "Send back to development", variant: "outline" });
+      if (head) moves.push({ to: "in_development", label: t("Send back to development"), variant: "outline" });
       break;
   }
 
   if (!moves.length) {
     return project.status === "internal_review" ? (
-      <p className="text-sm text-muted-foreground">Waiting for the Tech Head to review.</p>
+      <p className="text-sm text-muted-foreground">{t("Waiting for the Tech Head to review.")}</p>
     ) : null;
   }
   return (
-    <Detail label="Next step">
+    <Detail label={t("Next step")}>
+      <StatusButtons projectId={project.id} moves={moves} />
+    </Detail>
+  );
+}
+
+/** Operations status moves: start the installation, then mark it installed. */
+export async function InstallationActions({ me, project }: Omit<Props, "isMember">) {
+  if (!canManageInstallation(me)) return null;
+  const { t } = await getI18n();
+  const moves: Move[] = [];
+  if (project.status === "ready_for_installation") {
+    moves.push({ to: "installing", label: t("Start installation") });
+  } else if (project.status === "installing") {
+    moves.push({ to: "installed", label: t("Mark installed") });
+    moves.push({ to: "ready_for_installation", label: t("Pause: back to ready"), variant: "outline" });
+  }
+  if (!moves.length) {
+    const before = ["brief_submitted", "assigned", "in_development", "internal_review"].includes(project.status);
+    return before ? (
+      <p className="text-sm text-muted-foreground">
+        {t("You can start once the Tech Head approves the project for installation.")}
+      </p>
+    ) : null;
+  }
+  return (
+    <Detail label={t("Next step")}>
       <StatusButtons projectId={project.id} moves={moves} />
     </Detail>
   );
 }
 
 export async function WorkSections({ me, project, isMember }: Props) {
+  const { t, fmt } = await getI18n();
   const raiser = alias(users, "raiser");
   const resolver = alias(users, "resolver");
 
@@ -129,20 +161,27 @@ export async function WorkSections({ me, project, isMember }: Props) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            Flags
-            {openFlags.length > 0 && <Badge variant="destructive">{openFlags.length} open</Badge>}
+            {t("Flags")}
+            {openFlags.length > 0 && (
+              <Badge variant="destructive">{t("{count} open", { count: openFlags.length })}</Badge>
+            )}
           </CardTitle>
-          <CardDescription>Blockers and missing data. The department that needs to act sees them on its Flags page.</CardDescription>
+          <CardDescription>
+            {t("Blockers and missing data. The department that needs to act sees them on its Flags page.")}
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {flagRows.length === 0 && <p className="text-sm text-muted-foreground">No flags.</p>}
+          {flagRows.length === 0 && <p className="text-sm text-muted-foreground">{t("No flags.")}</p>}
           {openFlags.map((f) => (
             <div key={f.id} className="flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <Badge variant="destructive">{FLAG_LABELS[f.type]}</Badge>
+                <Badge variant="destructive">{t(FLAG_TYPE_LABELS[f.type])}</Badge>
                 <span>
-                  For <span className="font-medium">{DEPARTMENT_LABELS[f.ownerDepartment]}</span> · raised by{" "}
-                  {f.raisedByName} on {formatDateTime(f.createdAt)}
+                  {t("For {department} · raised by {name} on {date}", {
+                    department: t(DEPARTMENT_LABELS[f.ownerDepartment]),
+                    name: f.raisedByName,
+                    date: fmt.dateTime(f.createdAt),
+                  })}
                 </span>
               </div>
               <LinkedText text={f.details} />
@@ -150,19 +189,23 @@ export async function WorkSections({ me, project, isMember }: Props) {
             </div>
           ))}
           {closedFlags.length > 0 && (
-            <EditSection label={`Resolved (${closedFlags.length})`}>
+            <EditSection label={t("Resolved ({count})", { count: closedFlags.length })}>
               <ul className="flex flex-col gap-3">
                 {closedFlags.map((f) => (
                   <li key={f.id} className="text-sm">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="outline">{FLAG_LABELS[f.type]}</Badge>
+                      <Badge variant="outline">{t(FLAG_TYPE_LABELS[f.type])}</Badge>
                       <span className="text-muted-foreground">
-                        {f.raisedByName}, {formatDateTime(f.createdAt)}
+                        {f.raisedByName}, {fmt.dateTime(f.createdAt)}
                       </span>
                     </div>
                     <p className="mt-1">{f.details}</p>
                     <p className="text-muted-foreground">
-                      Resolved by {f.resolvedByName} on {formatDateTime(f.resolvedAt)}: {f.resolution}
+                      {t("Resolved by {name} on {date}: {resolution}", {
+                        name: f.resolvedByName ?? "—",
+                        date: fmt.dateTime(f.resolvedAt),
+                        resolution: f.resolution ?? "",
+                      })}
                     </p>
                   </li>
                 ))}
@@ -170,7 +213,7 @@ export async function WorkSections({ me, project, isMember }: Props) {
             </EditSection>
           )}
           {canRaiseFlag(me) && (
-            <EditSection label="Raise a flag">
+            <EditSection label={t("Raise a flag")}>
               <RaiseFlagForm projectId={project.id} />
             </EditSection>
           )}
@@ -179,21 +222,23 @@ export async function WorkSections({ me, project, isMember }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Equipment</CardTitle>
-          <CardDescription>Requests are approved automatically when enough units are free; otherwise they wait in line.</CardDescription>
+          <CardTitle>{t("Equipment")}</CardTitle>
+          <CardDescription>
+            {t("Requests are approved automatically when enough units are free; otherwise they wait in line.")}
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {requests.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No equipment requested.</p>
+            <p className="text-sm text-muted-foreground">{t("No equipment requested.")}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Qty</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Needed</TableHead>
-                  <TableHead>Requested by</TableHead>
+                  <TableHead>{t("Item")}</TableHead>
+                  <TableHead>{t("Qty")}</TableHead>
+                  <TableHead>{t("Status")}</TableHead>
+                  <TableHead>{t("Needed")}</TableHead>
+                  <TableHead>{t("Requested by")}</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -211,20 +256,27 @@ export async function WorkSections({ me, project, isMember }: Props) {
                           r.status === "approved" ? "secondary" : r.status === "waitlisted" ? "destructive" : "outline"
                         }
                       >
-                        {r.status}
+                        {t(REQUEST_STATUS_LABELS[r.status])}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {r.neededFrom || r.neededUntil ? `${formatDate(r.neededFrom)} → ${formatDate(r.neededUntil)}` : "—"}
+                      {r.neededFrom || r.neededUntil ? `${fmt.date(r.neededFrom)} – ${fmt.date(r.neededUntil)}` : "—"}
                     </TableCell>
                     <TableCell>{r.requesterName}</TableCell>
-                    <TableCell className="text-right">
-                      {canClose(r.requestedBy) && r.status === "approved" && (
-                        <SmallAction action={closeRequest} fields={{ id: r.id, outcome: "returned" }} label="Returned" variant="outline" />
-                      )}
-                      {canClose(r.requestedBy) && (r.status === "approved" || r.status === "waitlisted") && (
-                        <SmallAction action={closeRequest} fields={{ id: r.id, outcome: "cancelled" }} label="Cancel" />
-                      )}
+                    <TableCell className="text-end">
+                      <span className="inline-flex gap-1">
+                        {canClose(r.requestedBy) && r.status === "approved" && (
+                          <SmallAction
+                            action={closeRequest}
+                            fields={{ id: r.id, outcome: "returned" }}
+                            label={t("Returned")}
+                            variant="outline"
+                          />
+                        )}
+                        {canClose(r.requestedBy) && (r.status === "approved" || r.status === "waitlisted") && (
+                          <SmallAction action={closeRequest} fields={{ id: r.id, outcome: "cancelled" }} label={t("Cancel")} />
+                        )}
+                      </span>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -232,7 +284,7 @@ export async function WorkSections({ me, project, isMember }: Props) {
             </Table>
           )}
           {canRequestEquipment(me) && (
-            <EditSection label="Request equipment">
+            <EditSection label={t("Request equipment")}>
               <RequestEquipmentForm
                 projectId={project.id}
                 items={items
@@ -246,18 +298,23 @@ export async function WorkSections({ me, project, isMember }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Installation guide</CardTitle>
-          <CardDescription>Written by the developers for Operations. Needed before the project can be approved for installation.</CardDescription>
+          <CardTitle>{t("Installation guide")}</CardTitle>
+          <CardDescription>
+            {t("Written by the developers for Operations. Needed before the project can be approved for installation.")}
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
-          <Detail label="Steps">
-            <LinkedText text={guide?.steps} empty="Not written yet." />
+          <Detail label={t("Steps")}>
+            <LinkedText text={guide?.steps} empty={t("Not written yet.")} />
           </Detail>
-          <Detail label="Demo video">
-            <LinkedText text={guide?.demoVideoUrl} empty="No demo video yet." />
+          <Detail label={t("Demo video")}>
+            <LinkedText text={guide?.demoVideoUrl} empty={t("No demo video yet.")} />
           </Detail>
           {canWorkOnProject(me, isMember) && (
-            <EditSection label={guide ? "Edit guide" : "Write guide"} open={!guide && project.status === "in_development"}>
+            <EditSection
+              label={guide?.steps || guide?.demoVideoUrl ? t("Edit guide") : t("Write guide")}
+              open={!guide?.steps && project.status === "in_development"}
+            >
               <GuideForm projectId={project.id} initial={{ steps: guide?.steps, demoVideoUrl: guide?.demoVideoUrl }} />
             </EditSection>
           )}

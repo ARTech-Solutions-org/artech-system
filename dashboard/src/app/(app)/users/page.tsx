@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/lib/auth/session";
+import { USER_STATUS_LABELS } from "@/lib/format";
+import { getI18n } from "@/lib/i18n/server";
 import {
   canManageAnyUsers,
   canManageUser,
@@ -20,6 +22,7 @@ import { CreateUserForm } from "./create-user-form";
 export default async function UsersPage() {
   const me = await requireUser();
   if (!canManageAnyUsers(me)) redirect("/");
+  const { t, fmt } = await getI18n();
 
   const query = db
     .select({
@@ -41,16 +44,18 @@ export default async function UsersPage() {
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Users</h1>
+        <h1 className="text-2xl font-semibold">{t("Users")}</h1>
         <p className="text-muted-foreground">
-          {me.isSuperAdmin ? "All departments" : `${DEPARTMENT_LABELS[me.department!]} department`}
+          {me.isSuperAdmin
+            ? t("All departments")
+            : t("{department} department", { department: t(DEPARTMENT_LABELS[me.department!]) })}
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Add member</CardTitle>
-          <CardDescription>The new member signs in with this temporary password and must change it.</CardDescription>
+          <CardTitle>{t("Add member")}</CardTitle>
+          <CardDescription>{t("The new member signs in with this temporary password and must change it.")}</CardDescription>
         </CardHeader>
         <CardContent>
           <CreateUserForm departments={departments} canSetHead={canSetHead(me)} />
@@ -62,11 +67,11 @@ export default async function UsersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last login</TableHead>
+                <TableHead>{t("Name")}</TableHead>
+                <TableHead>{t("Email")}</TableHead>
+                <TableHead>{t("Role")}</TableHead>
+                <TableHead>{t("Status")}</TableHead>
+                <TableHead>{t("Last login")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -81,13 +86,17 @@ export default async function UsersPage() {
                       u.name
                     )}
                   </TableCell>
-                  <TableCell>{u.email}</TableCell>
-                  <TableCell>{roleTitle(u)}</TableCell>
+                  <TableCell dir="ltr" className="text-start">
+                    {u.email}
+                  </TableCell>
+                  <TableCell>{t(roleTitle(u))}</TableCell>
                   <TableCell>
-                    <Badge variant={u.status === "active" ? "secondary" : "destructive"}>{u.status}</Badge>
+                    <Badge variant={u.status === "active" ? "secondary" : "destructive"}>
+                      {t(USER_STATUS_LABELS[u.status])}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {u.lastLoginAt ? u.lastLoginAt.toLocaleString("en-GB", { timeZone: "Africa/Cairo" }) : "Never"}
+                    {u.lastLoginAt ? fmt.dateTime(u.lastLoginAt) : t("Never")}
                   </TableCell>
                 </TableRow>
               ))}

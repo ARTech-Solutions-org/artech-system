@@ -19,6 +19,7 @@ import { audit } from "@/lib/audit";
 import { requireUser } from "@/lib/auth/session";
 import { isUniqueViolation } from "@/lib/db-errors";
 import { CURRENCIES } from "@/lib/format";
+import { firstIssue } from "@/lib/i18n";
 import {
   canAssign,
   canEditBrief,
@@ -88,12 +89,12 @@ export async function createProject(_: FormState, formData: FormData): Promise<F
   if (!canEditBrief(me)) return { error: "Only Business can create briefs.", values };
 
   const brief = BriefSchema.safeParse(values);
-  if (!brief.success) return { error: brief.error.issues[0].message, values };
+  if (!brief.success) return { error: firstIssue(brief.error), values };
 
   const finance = canEditBudget(me) ? FinanceSchema.safeParse(values) : null;
-  if (finance && !finance.success) return { error: finance.error.issues[0].message, values };
+  if (finance && !finance.success) return { error: firstIssue(finance.error), values };
   const schedule = canEditInstallationDate(me) ? ScheduleSchema.safeParse(values) : null;
-  if (schedule && !schedule.success) return { error: schedule.error.issues[0].message, values };
+  if (schedule && !schedule.success) return { error: firstIssue(schedule.error), values };
 
   let id: string;
   try {
@@ -141,8 +142,8 @@ export async function updateBrief(_: FormState, formData: FormData): Promise<For
 
   const id = projectId.safeParse(values.projectId);
   const brief = BriefSchema.safeParse(values);
-  if (!id.success) return { error: id.error.issues[0].message, values };
-  if (!brief.success) return { error: brief.error.issues[0].message, values };
+  if (!id.success) return { error: firstIssue(id.error), values };
+  if (!brief.success) return { error: firstIssue(brief.error), values };
 
   try {
     const updated = await db
@@ -170,8 +171,8 @@ export async function saveFinance(_: FormState, formData: FormData): Promise<For
 
   const id = projectId.safeParse(values.projectId);
   const parsed = FinanceSchema.safeParse(values);
-  if (!id.success) return { error: id.error.issues[0].message, values };
-  if (!parsed.success) return { error: parsed.error.issues[0].message, values };
+  if (!id.success) return { error: firstIssue(id.error), values };
+  if (!parsed.success) return { error: firstIssue(parsed.error), values };
   if (!(await projectExists(id.data))) return { error: "Project not found.", values };
 
   const row = {
@@ -206,7 +207,7 @@ export async function addFinanceEntry(_: FormState, formData: FormData): Promise
   if (!canManageFinance(me)) return { error: "Only Accounting can record payments and expenses.", values };
 
   const parsed = FinanceEntrySchema.safeParse(values);
-  if (!parsed.success) return { error: parsed.error.issues[0].message, values };
+  if (!parsed.success) return { error: firstIssue(parsed.error), values };
   if (!(await projectExists(parsed.data.projectId))) return { error: "Project not found.", values };
 
   const [created] = await db
@@ -244,8 +245,8 @@ export async function saveSchedule(_: FormState, formData: FormData): Promise<Fo
 
   const id = projectId.safeParse(values.projectId);
   const parsed = ScheduleSchema.safeParse(values);
-  if (!id.success) return { error: id.error.issues[0].message, values };
-  if (!parsed.success) return { error: parsed.error.issues[0].message, values };
+  if (!id.success) return { error: firstIssue(id.error), values };
+  if (!parsed.success) return { error: firstIssue(parsed.error), values };
   if (!(await projectExists(id.data))) return { error: "Project not found.", values };
 
   const row = {
@@ -277,7 +278,7 @@ export async function addProgressReview(_: FormState, formData: FormData): Promi
   if (!canEditInstallationDate(me)) return { error: "Only Business can set progress dates.", values };
 
   const parsed = ProgressReviewSchema.safeParse(values);
-  if (!parsed.success) return { error: parsed.error.issues[0].message, values };
+  if (!parsed.success) return { error: firstIssue(parsed.error), values };
   if (!(await projectExists(parsed.data.projectId))) return { error: "Project not found.", values };
 
   const [created] = await db
@@ -419,8 +420,8 @@ export async function setDevDeadline(_: FormState, formData: FormData): Promise<
 
   const id = projectId.safeParse(formData.get("projectId"));
   const deadline = optionalDate.safeParse(formData.get("devDeadline") ?? "");
-  if (!id.success) return { error: id.error.issues[0].message };
-  if (!deadline.success) return { error: deadline.error.issues[0].message };
+  if (!id.success) return { error: firstIssue(id.error) };
+  if (!deadline.success) return { error: firstIssue(deadline.error) };
 
   const updated = await db
     .update(projects)
@@ -454,7 +455,7 @@ export async function addMilestone(_: FormState, formData: FormData): Promise<Fo
   if (!canAssign(me)) return { error: "Only the Tech Head can add milestones.", values };
 
   const parsed = MilestoneSchema.safeParse(values);
-  if (!parsed.success) return { error: parsed.error.issues[0].message, values };
+  if (!parsed.success) return { error: firstIssue(parsed.error), values };
   if (!(await projectExists(parsed.data.projectId))) return { error: "Project not found.", values };
 
   const [created] = await db

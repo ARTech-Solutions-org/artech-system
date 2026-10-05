@@ -30,11 +30,16 @@ export async function projectExists(projectId: string): Promise<boolean> {
   return !!row;
 }
 
-/** Active members of the Development department, i.e. people who can be assigned to projects. */
-export function listDevelopers() {
+function listActive(department: "development" | "operations") {
   return db
     .select({ id: users.id, name: users.name, isHead: users.isHead })
     .from(users)
-    .where(and(eq(users.department, "development"), eq(users.status, "active")))
+    .where(and(eq(users.department, department), eq(users.status, "active")))
     .orderBy(asc(users.name));
 }
+
+/** Active members of the Development department, i.e. people who can be assigned to projects. */
+export const listDevelopers = () => listActive("development");
+
+/** Active members of Operations, who can lead an installation. */
+export const listTechnicians = () => listActive("operations");

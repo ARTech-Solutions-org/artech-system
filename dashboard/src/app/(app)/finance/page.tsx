@@ -8,12 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/lib/auth/session";
 import { outstanding, totalsByCurrency, type CurrencyTotals } from "@/lib/finance";
-import { formatMoney, PROJECT_STATUS_LABELS } from "@/lib/format";
+import { PROJECT_STATUS_LABELS } from "@/lib/format";
+import { getI18n } from "@/lib/i18n/server";
 import { canViewBudget } from "@/lib/permissions";
 
 export default async function FinancePage() {
   const me = await requireUser();
   if (!canViewBudget(me)) redirect("/");
+  const { t, fmt } = await getI18n();
 
   const rows = await db
     .select({
@@ -54,18 +56,18 @@ export default async function FinancePage() {
     if (r.budget !== null && r.currency) {
       (grand[r.currency] ??= { budget: 0, received: 0, expenses: 0 }).budget += Number(r.budget);
     }
-    for (const [c, t] of Object.entries(totals)) {
+    for (const [c, totalsForCurrency] of Object.entries(totals)) {
       const g = (grand[c] ??= { budget: 0, received: 0, expenses: 0 });
-      g.received += t.received;
-      g.expenses += t.expenses;
+      g.received += totalsForCurrency.received;
+      g.expenses += totalsForCurrency.expenses;
     }
   }
 
   return (
     <div className="flex max-w-6xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Finance</h1>
-        <p className="text-muted-foreground">Budgets, payments received and expenses for every project.</p>
+        <h1 className="text-2xl font-semibold">{t("Finance")}</h1>
+        <p className="text-muted-foreground">{t("Budgets, payments received and expenses for every project.")}</p>
       </div>
 
       {Object.keys(grand).length > 0 && (
@@ -74,19 +76,19 @@ export default async function FinancePage() {
             <Card key={c}>
               <CardHeader>
                 <CardTitle>{c}</CardTitle>
-                <CardDescription>All projects</CardDescription>
+                <CardDescription>{t("All projects")}</CardDescription>
               </CardHeader>
               <CardContent className="grid grid-cols-2 gap-2 text-sm">
-                <span className="text-muted-foreground">Budgets</span>
-                <span className="text-right tabular-nums">{formatMoney(g.budget, c)}</span>
-                <span className="text-muted-foreground">Received</span>
-                <span className="text-right tabular-nums">{formatMoney(g.received, c)}</span>
-                <span className="text-muted-foreground">Outstanding</span>
-                <span className="text-right tabular-nums">{formatMoney(g.budget - g.received, c)}</span>
-                <span className="text-muted-foreground">Expenses</span>
-                <span className="text-right tabular-nums">{formatMoney(g.expenses, c)}</span>
-                <span className="font-medium">Net (received − expenses)</span>
-                <span className="text-right font-medium tabular-nums">{formatMoney(g.received - g.expenses, c)}</span>
+                <span className="text-muted-foreground">{t("Budgets")}</span>
+                <span className="text-end tabular-nums">{fmt.money(g.budget, c)}</span>
+                <span className="text-muted-foreground">{t("Received")}</span>
+                <span className="text-end tabular-nums">{fmt.money(g.received, c)}</span>
+                <span className="text-muted-foreground">{t("Outstanding")}</span>
+                <span className="text-end tabular-nums">{fmt.money(g.budget - g.received, c)}</span>
+                <span className="text-muted-foreground">{t("Expenses")}</span>
+                <span className="text-end tabular-nums">{fmt.money(g.expenses, c)}</span>
+                <span className="font-medium">{t("Net (received − expenses)")}</span>
+                <span className="text-end font-medium tabular-nums">{fmt.money(g.received - g.expenses, c)}</span>
               </CardContent>
             </Card>
           ))}
@@ -96,17 +98,17 @@ export default async function FinancePage() {
       <Card>
         <CardContent>
           {rows.length === 0 ? (
-            <p className="py-6 text-center text-muted-foreground">No projects yet.</p>
+            <p className="py-6 text-center text-muted-foreground">{t("No projects yet.")}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Project</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Budget</TableHead>
-                  <TableHead className="text-right">Received</TableHead>
-                  <TableHead className="text-right">Outstanding</TableHead>
-                  <TableHead className="text-right">Expenses</TableHead>
+                  <TableHead>{t("Project")}</TableHead>
+                  <TableHead>{t("Status")}</TableHead>
+                  <TableHead className="text-end">{t("Budget")}</TableHead>
+                  <TableHead className="text-end">{t("Received")}</TableHead>
+                  <TableHead className="text-end">{t("Outstanding")}</TableHead>
+                  <TableHead className="text-end">{t("Expenses")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -123,24 +125,22 @@ export default async function FinancePage() {
                         </Link>
                         {r.clientName && <div className="text-xs text-muted-foreground">{r.clientName}</div>}
                         {others.length > 0 && (
-                          <div className="text-xs text-muted-foreground">Also has {others.join(", ")} entries</div>
+                          <div className="text-xs text-muted-foreground">
+                            {t("Also has {currencies} entries", { currencies: others.join(", ") })}
+                          </div>
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{PROJECT_STATUS_LABELS[r.status]}</Badge>
+                        <Badge variant="outline">{t(PROJECT_STATUS_LABELS[r.status])}</Badge>
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">{formatMoney(r.budget, c)}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatMoney(totals[c]?.received ?? 0, c)}
-                      </TableCell>
+                      <TableCell className="text-end tabular-nums">{fmt.money(r.budget, c)}</TableCell>
+                      <TableCell className="text-end tabular-nums">{fmt.money(totals[c]?.received ?? 0, c)}</TableCell>
                       <TableCell
-                        className={`text-right tabular-nums ${due !== null && due < 0 ? "text-destructive" : ""}`}
+                        className={`text-end tabular-nums ${due !== null && due < 0 ? "text-destructive" : ""}`}
                       >
-                        {due === null ? "—" : formatMoney(due, c)}
+                        {due === null ? "—" : fmt.money(due, c)}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatMoney(totals[c]?.expenses ?? 0, c)}
-                      </TableCell>
+                      <TableCell className="text-end tabular-nums">{fmt.money(totals[c]?.expenses ?? 0, c)}</TableCell>
                     </TableRow>
                   );
                 })}

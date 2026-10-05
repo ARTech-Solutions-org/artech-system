@@ -1,8 +1,12 @@
+"use client";
+
 import type { FormState } from "@/app/actions/auth";
+import { useI18n } from "@/components/i18n-provider";
 
 export function FormMessage({ state }: { state: FormState }) {
-  if (state?.error) return <p className="text-sm text-destructive">{state.error}</p>;
-  if (state?.success) return <p className="text-sm text-green-600">{state.success}</p>;
+  const { tLoose } = useI18n();
+  if (state?.error) return <p className="text-sm text-destructive">{tLoose(state.error, state.vars)}</p>;
+  if (state?.success) return <p className="text-sm text-green-600">{tLoose(state.success, state.vars)}</p>;
   return null;
 }
 

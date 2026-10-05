@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/session";
 import { inUseQuantity } from "@/lib/equipment";
+import { EQUIPMENT_STATUS_LABELS } from "@/lib/format";
+import { getI18n } from "@/lib/i18n/server";
 import { canManageEquipment, canRequestEquipment } from "@/lib/permissions";
 import { EquipmentForm } from "../projects/work-forms";
 import { EditSection } from "../projects/[id]/project-ui";
@@ -15,6 +17,7 @@ export default async function EquipmentPage() {
   const me = await requireUser();
   const manage = canManageEquipment(me);
   if (!manage && !canRequestEquipment(me)) redirect("/");
+  const { t } = await getI18n();
 
   const [items, holders] = await Promise.all([
     db
@@ -48,17 +51,15 @@ export default async function EquipmentPage() {
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Equipment</h1>
-        <p className="text-muted-foreground">
-          Stock and who is using it. Request equipment from a project page.
-        </p>
+        <h1 className="text-2xl font-semibold">{t("Equipment")}</h1>
+        <p className="text-muted-foreground">{t("Stock and who is using it. Request equipment from a project page.")}</p>
       </div>
 
       {manage && (
         <Card>
           <CardHeader>
-            <CardTitle>Add equipment</CardTitle>
-            <CardDescription>Use one entry per kind of item and set the quantity, e.g. 3 NFC readers.</CardDescription>
+            <CardTitle>{t("Add equipment")}</CardTitle>
+            <CardDescription>{t("Use one entry per kind of item and set the quantity, e.g. 3 NFC readers.")}</CardDescription>
           </CardHeader>
           <CardContent>
             <EquipmentForm />
@@ -66,7 +67,7 @@ export default async function EquipmentPage() {
         </Card>
       )}
 
-      {items.length === 0 && <p className="text-muted-foreground">No equipment yet.</p>}
+      {items.length === 0 && <p className="text-muted-foreground">{t("No equipment yet.")}</p>}
 
       <div className="grid gap-4 md:grid-cols-2">
         {items.map((item) => {
@@ -79,35 +80,35 @@ export default async function EquipmentPage() {
                 <CardTitle className="flex flex-wrap items-center gap-2">
                   {item.name}
                   <span className="text-sm font-normal text-muted-foreground">{item.code}</span>
-                  {item.status !== "active" && <Badge variant="destructive">{item.status}</Badge>}
+                  {item.status !== "active" && (
+                    <Badge variant="destructive">{t(EQUIPMENT_STATUS_LABELS[item.status])}</Badge>
+                  )}
                 </CardTitle>
-                <CardDescription>
-                  {[item.category, item.location].filter(Boolean).join(" · ") || "—"}
-                </CardDescription>
+                <CardDescription>{[item.category, item.location].filter(Boolean).join(" · ") || "—"}</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-3 text-sm">
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="rounded-lg border p-2">
                     <div className="text-lg font-semibold">{item.quantity}</div>
-                    <div className="text-xs text-muted-foreground">Total</div>
+                    <div className="text-xs text-muted-foreground">{t("Total")}</div>
                   </div>
                   <div className="rounded-lg border p-2">
                     <div className="text-lg font-semibold">{item.inUse}</div>
-                    <div className="text-xs text-muted-foreground">In use</div>
+                    <div className="text-xs text-muted-foreground">{t("In use")}</div>
                   </div>
                   <div className="rounded-lg border p-2">
                     <div className={`text-lg font-semibold ${free <= 0 ? "text-destructive" : "text-green-600"}`}>
                       {Math.max(free, 0)}
                     </div>
-                    <div className="text-xs text-muted-foreground">Free</div>
+                    <div className="text-xs text-muted-foreground">{t("Free")}</div>
                   </div>
                 </div>
                 {using.length > 0 && (
                   <div>
-                    <span className="text-muted-foreground">In use by: </span>
+                    <span className="text-muted-foreground">{t("In use by:")} </span>
                     {using.map((h, i) => (
                       <span key={`${h.projectId}-${i}`}>
-                        {i > 0 && ", "}
+                        {i > 0 && " · "}
                         <Link href={`/projects/${h.projectId}`} className="underline-offset-4 hover:underline">
                           {h.projectName}
                         </Link>{" "}
@@ -118,12 +119,12 @@ export default async function EquipmentPage() {
                 )}
                 {waiting.length > 0 && (
                   <div className="text-destructive">
-                    Waiting: {waiting.map((h) => `${h.projectName} (${h.quantity})`).join(", ")}
+                    {t("Waiting:")} {waiting.map((h) => `${h.projectName} (${h.quantity})`).join(" · ")}
                   </div>
                 )}
                 {item.notes && <p className="text-muted-foreground">{item.notes}</p>}
                 {manage && (
-                  <EditSection label="Edit">
+                  <EditSection label={t("Edit")}>
                     <EquipmentForm
                       initial={{
                         id: item.id,

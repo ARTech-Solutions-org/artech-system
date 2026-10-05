@@ -7,7 +7,7 @@ export function LinkedText({ text, empty = "—" }: { text: string | null | unde
   return (
     <div className="flex flex-col gap-1 text-sm">
       {text.split("\n").map((line, i) => (
-        <p key={i} className="break-words whitespace-pre-wrap">
+        <p key={i} dir="auto" className="break-words whitespace-pre-wrap [text-align:match-parent]">
           {line.split(URL_PATTERN).map((part, j) =>
             /^https?:\/\//.test(part) ? (
               <a key={j} href={part} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-4">

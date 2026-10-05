@@ -7,11 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/lib/auth/session";
-import { formatDate, formatMoney, PROJECT_STATUS_LABELS } from "@/lib/format";
+import { PROJECT_STATUS_LABELS } from "@/lib/format";
+import { getI18n } from "@/lib/i18n/server";
 import { canEditBrief, canSeeAllProjects, canViewBudget, canViewInstallationDate } from "@/lib/permissions";
 
 export default async function ProjectsPage() {
   const me = await requireUser();
+  const { t, fmt, locale } = await getI18n();
   const showBudget = canViewBudget(me);
   const showInstallation = canViewInstallationDate(me);
 
@@ -55,20 +57,20 @@ export default async function ProjectsPage() {
     members
       .filter((m) => m.projectId === id)
       .map((m) => m.name)
-      .join(", ");
+      .join(locale === "ar" ? "، " : ", ");
 
   return (
     <div className="flex max-w-6xl flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Projects</h1>
+          <h1 className="text-2xl font-semibold">{t("Projects")}</h1>
           <p className="text-muted-foreground">
-            {canSeeAllProjects(me) ? "All projects" : "Projects you are assigned to"}
+            {canSeeAllProjects(me) ? t("All projects") : t("Projects you are assigned to")}
           </p>
         </div>
         {canEditBrief(me) && (
           <Link href="/projects/new" className={buttonVariants()}>
-            New brief
+            {t("New brief")}
           </Link>
         )}
       </div>
@@ -76,18 +78,18 @@ export default async function ProjectsPage() {
       <Card>
         <CardContent>
           {rows.length === 0 ? (
-            <p className="py-6 text-center text-muted-foreground">No projects yet.</p>
+            <p className="py-6 text-center text-muted-foreground">{t("No projects yet.")}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Project</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Team</TableHead>
-                  <TableHead>Dev deadline</TableHead>
-                  {showInstallation && <TableHead>Installation</TableHead>}
-                  {showBudget && <TableHead className="text-right">Budget</TableHead>}
+                  <TableHead>{t("Project")}</TableHead>
+                  <TableHead>{t("Client")}</TableHead>
+                  <TableHead>{t("Status")}</TableHead>
+                  <TableHead>{t("Team")}</TableHead>
+                  <TableHead>{t("Dev deadline")}</TableHead>
+                  {showInstallation && <TableHead>{t("Installation")}</TableHead>}
+                  {showBudget && <TableHead className="text-end">{t("Budget")}</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -101,16 +103,14 @@ export default async function ProjectsPage() {
                     <TableCell>{p.clientName ?? "—"}</TableCell>
                     <TableCell>
                       <Badge variant={p.status === "brief_submitted" ? "outline" : "secondary"}>
-                        {PROJECT_STATUS_LABELS[p.status]}
+                        {t(PROJECT_STATUS_LABELS[p.status])}
                       </Badge>
                     </TableCell>
                     <TableCell className="max-w-48 truncate">{teamOf(p.id) || "—"}</TableCell>
-                    <TableCell>{formatDate(p.devDeadline)}</TableCell>
-                    {showInstallation && <TableCell>{formatDate(p.installationDate)}</TableCell>}
+                    <TableCell>{fmt.date(p.devDeadline)}</TableCell>
+                    {showInstallation && <TableCell>{fmt.date(p.installationDate)}</TableCell>}
                     {showBudget && (
-                      <TableCell className="text-right tabular-nums">
-                        {formatMoney(p.budget, p.currency ?? "EGP")}
-                      </TableCell>
+                      <TableCell className="text-end tabular-nums">{fmt.money(p.budget, p.currency ?? "EGP")}</TableCell>
                     )}
                   </TableRow>
                 ))}

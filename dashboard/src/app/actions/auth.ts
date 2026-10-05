@@ -8,10 +8,14 @@ import { users } from "@/db/schema";
 import { audit } from "@/lib/audit";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, deleteCurrentSession, deleteUserSessions, requireUser } from "@/lib/auth/session";
+import { firstIssue, type Msg, type Vars } from "@/lib/i18n";
 
-/** `values` echoes submitted fields back so a form can keep them after an error (React resets forms after actions). */
+/**
+ * Messages are dictionary keys, translated where they are shown; `vars` fills their `{placeholders}`.
+ * `values` echoes submitted fields back so a form can keep them after an error (React resets forms after actions).
+ */
 export type FormState =
-  | { error?: string; success?: string; email?: string; values?: Record<string, string> }
+  | { error?: Msg; success?: Msg; vars?: Vars; email?: string; values?: Record<string, string> }
   | undefined;
 
 const MAX_FAILURES = 10;
@@ -41,7 +45,7 @@ const LoginSchema = z.object({
 
 export async function login(_: FormState, formData: FormData): Promise<FormState> {
   const parsed = LoginSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const email = parsed.data.email.toLowerCase();
   if (isLockedOut(email)) return { error: "Too many failed attempts. Try again in 15 minutes.", email };
@@ -85,7 +89,7 @@ const ChangePasswordSchema = z
 export async function changePassword(_: FormState, formData: FormData): Promise<FormState> {
   const me = await requireUser({ allowPasswordChange: true });
   const parsed = ChangePasswordSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const [row] = await db.select({ passwordHash: users.passwordHash }).from(users).where(eq(users.id, me.id));
   if (!(await verifyPassword(parsed.data.current, row?.passwordHash ?? null))) {

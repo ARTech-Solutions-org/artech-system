@@ -127,4 +127,8 @@
   html {
     @apply font-sans;
   }
+  /* Geist's fallback (Arial) has Arabic glyphs, so the Arabic font must come first. */
+  html:lang(ar) {
+    font-family: var(--font-arabic), var(--font-geist-sans), sans-serif;
+  }
 }

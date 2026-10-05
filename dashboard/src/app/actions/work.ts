@@ -1,15 +1,16 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { equipment, equipmentRequests, flags, installations, projects } from "@/db/schema";
+import { equipment, equipmentRequests, flags, installations, projects, users } from "@/db/schema";
 import { audit } from "@/lib/audit";
 import { requireUser } from "@/lib/auth/session";
 import { isUniqueViolation } from "@/lib/db-errors";
 import { closeEquipmentRequest, createEquipmentRequest, refreshWaitlist } from "@/lib/equipment";
 import type { ProjectStatus } from "@/lib/format";
+import { firstIssue } from "@/lib/i18n";
 import {
   canAssign,
   canManageEquipment,
@@ -61,7 +62,7 @@ export async function requestEquipment(_: FormState, formData: FormData): Promis
   const me = await requireUser();
   const values = formValues(formData);
   const parsed = RequestSchema.safeParse(values);
-  if (!parsed.success) return { error: parsed.error.issues[0].message, values };
+  if (!parsed.success) return { error: firstIssue(parsed.error), values };
 
   const access = await getProjectAccess(me, parsed.data.projectId);
   if (!access || !canRequestEquipment(me)) return { error: "You cannot request equipment for this project.", values };
@@ -78,9 +79,10 @@ export async function requestEquipment(_: FormState, formData: FormData): Promis
   });
   refresh();
   return result.status === "approved"
-    ? { success: `Approved: ${parsed.data.quantity} × ${result.itemName} reserved for this project.` }
+    ? { success: "Approved: {qty} × {item} reserved for this project.", vars: { qty: parsed.data.quantity, item: result.itemName } }
     : {
-        success: `Waitlisted: only ${Math.max(result.free, 0)} ${result.itemName} free right now. It will be approved automatically when units come back.`,
+        success: "Waitlisted: only {free} {item} free right now. It will be approved automatically when units come back.",
+        vars: { free: Math.max(result.free, 0), item: result.itemName },
       };
 }
 
@@ -128,7 +130,7 @@ export async function saveEquipment(_: FormState, formData: FormData): Promise<F
   const id = z.union([z.literal(""), z.uuid()]).optional().safeParse(values.id ?? "");
   const parsed = EquipmentSchema.safeParse(values);
   if (!id.success) return { error: "Invalid equipment.", values };
-  if (!parsed.success) return { error: parsed.error.issues[0].message, values };
+  if (!parsed.success) return { error: firstIssue(parsed.error), values };
 
   let equipmentId: string;
   try {
@@ -158,9 +160,10 @@ export async function saveEquipment(_: FormState, formData: FormData): Promise<F
     changes: { ...parsed.data, promoted },
   });
   refresh();
-  return id.data
-    ? { success: promoted.length ? `Saved. ${promoted.length} waitlisted request(s) approved.` : "Saved.", values }
-    : { success: `${parsed.data.name} added.` };
+  if (!id.data) return { success: "{name} added.", vars: { name: parsed.data.name } };
+  return promoted.length
+    ? { success: "Saved. {count} waitlisted request(s) approved.", vars: { count: promoted.length }, values }
+    : { success: "Saved.", values };
 }
 
 // Flags
@@ -176,7 +179,7 @@ export async function raiseFlag(_: FormState, formData: FormData): Promise<FormS
   const me = await requireUser();
   const values = formValues(formData);
   const parsed = FlagSchema.safeParse(values);
-  if (!parsed.success) return { error: parsed.error.issues[0].message, values };
+  if (!parsed.success) return { error: firstIssue(parsed.error), values };
 
   const access = await getProjectAccess(me, parsed.data.projectId);
   if (!access || !canRaiseFlag(me)) return { error: "You cannot raise flags on this project.", values };
@@ -195,7 +198,7 @@ export async function resolveFlag(_: FormState, formData: FormData): Promise<For
   const id = z.uuid().safeParse(formData.get("id"));
   const resolution = z.string().trim().min(2, "Say how it was resolved.").safeParse(formData.get("resolution"));
   if (!id.success) return { error: "Invalid flag." };
-  if (!resolution.success) return { error: resolution.error.issues[0].message };
+  if (!resolution.success) return { error: firstIssue(resolution.error) };
 
   const [flag] = await db.select().from(flags).where(eq(flags.id, id.data));
   if (!flag || flag.status !== "open") return { error: "This flag is already resolved." };
@@ -212,7 +215,7 @@ export async function resolveFlag(_: FormState, formData: FormData): Promise<For
   return { success: "Flag resolved." };
 }
 
-// Installation guide
+// Installation guide (developers)
 
 const GuideSchema = z.object({
   projectId: z.uuid("Invalid project."),
@@ -224,7 +227,7 @@ export async function saveGuide(_: FormState, formData: FormData): Promise<FormS
   const me = await requireUser();
   const values = formValues(formData);
   const parsed = GuideSchema.safeParse(values);
-  if (!parsed.success) return { error: parsed.error.issues[0].message, values };
+  if (!parsed.success) return { error: firstIssue(parsed.error), values };
 
   const access = await getProjectAccess(me, parsed.data.projectId);
   if (!access || !canWorkOnProject(me, access.isMember)) {
@@ -241,40 +244,110 @@ export async function saveGuide(_: FormState, formData: FormData): Promise<FormS
   return { success: "Installation guide saved.", values };
 }
 
+// Installation team and report (Operations)
+
+const InstallationSchema = z.object({
+  projectId: z.uuid("Invalid project."),
+  leadTechnicianId: z
+    .union([z.literal(""), z.uuid()])
+    .optional()
+    .transform((v) => v || null),
+  installNotes: optionalText,
+});
+
+export async function saveInstallation(_: FormState, formData: FormData): Promise<FormState> {
+  const me = await requireUser();
+  const values = formValues(formData);
+  if (!canManageInstallation(me)) return { error: "Only Operations can update the installation.", values };
+
+  const parsed = InstallationSchema.safeParse(values);
+  if (!parsed.success) return { error: firstIssue(parsed.error), values };
+  if (!(await getProjectAccess(me, parsed.data.projectId))) return { error: "Project not found.", values };
+
+  if (parsed.data.leadTechnicianId) {
+    const [tech] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(
+        and(
+          eq(users.id, parsed.data.leadTechnicianId),
+          eq(users.department, "operations"),
+          eq(users.status, "active"),
+        ),
+      );
+    if (!tech) return { error: "Pick an active member of Operations.", values };
+  }
+
+  const row = { leadTechnicianId: parsed.data.leadTechnicianId, notes: parsed.data.installNotes, updatedBy: me.id };
+  await db
+    .insert(installations)
+    .values({ projectId: parsed.data.projectId, ...row })
+    .onConflictDoUpdate({ target: installations.projectId, set: row });
+  await audit({ userId: me.id, action: "update_installation", entity: "project", entityId: parsed.data.projectId, changes: row });
+  refresh();
+  return { success: "Installation details saved.", values };
+}
+
 // Status
 
-const DEV_MOVES: Partial<Record<ProjectStatus, ProjectStatus[]>> = {
+type Moves = Partial<Record<ProjectStatus, ProjectStatus[]>>;
+const DEV_MOVES: Moves = {
   assigned: ["in_development"],
   in_development: ["internal_review"],
 };
-const HEAD_MOVES: Partial<Record<ProjectStatus, ProjectStatus[]>> = {
+const HEAD_MOVES: Moves = {
   internal_review: ["ready_for_installation", "in_development"],
   ready_for_installation: ["in_development"],
+};
+const OPS_MOVES: Moves = {
+  ready_for_installation: ["installing"],
+  installing: ["installed", "ready_for_installation"],
 };
 
 export async function moveStatus(_: FormState, formData: FormData): Promise<FormState> {
   const me = await requireUser();
   const id = z.uuid().safeParse(formData.get("projectId"));
   const to = z
-    .enum(["in_development", "internal_review", "ready_for_installation"])
+    .enum(["in_development", "internal_review", "ready_for_installation", "installing", "installed"])
     .safeParse(formData.get("to"));
   if (!id.success || !to.success) return { error: "Invalid status change." };
 
   const access = await getProjectAccess(me, id.data);
-  if (!access || !canWorkOnProject(me, access.isMember)) return { error: "You cannot change this project's status." };
+  if (!access) return { error: "You cannot change this project's status." };
   const from = access.project.status;
 
-  const allowed = [...(DEV_MOVES[from] ?? []), ...(canAssign(me) ? (HEAD_MOVES[from] ?? []) : [])];
+  const allowed = [
+    ...(canWorkOnProject(me, access.isMember) ? (DEV_MOVES[from] ?? []) : []),
+    ...(canAssign(me) ? (HEAD_MOVES[from] ?? []) : []),
+    ...(canManageInstallation(me) ? (OPS_MOVES[from] ?? []) : []),
+  ];
   if (!allowed.includes(to.data)) return { error: "That status change isn't allowed from here." };
 
-  if (to.data === "ready_for_installation") {
+  if (to.data === "ready_for_installation" && from === "internal_review") {
     const [guide] = await db.select().from(installations).where(eq(installations.projectId, id.data));
     if (!guide?.steps || !guide.demoVideoUrl) {
       return { error: "Add the installation steps and the demo video link first." };
     }
   }
 
-  await db.update(projects).set({ status: to.data }).where(eq(projects.id, id.data));
+  await db.transaction(async (tx) => {
+    await tx.update(projects).set({ status: to.data }).where(eq(projects.id, id.data));
+    const now = new Date();
+    const install =
+      to.data === "installing"
+        ? { status: "in_progress" as const, startedAt: now, completedAt: null }
+        : to.data === "installed"
+          ? { status: "done" as const, completedAt: now }
+          : from === "installing"
+            ? { status: "scheduled" as const, startedAt: null }
+            : null;
+    if (install) {
+      await tx
+        .insert(installations)
+        .values({ projectId: id.data, ...install, updatedBy: me.id })
+        .onConflictDoUpdate({ target: installations.projectId, set: { ...install, updatedBy: me.id } });
+    }
+  });
   await audit({ userId: me.id, action: "status", entity: "project", entityId: id.data, changes: { from, to: to.data } });
   refresh();
   return { success: "Status updated." };

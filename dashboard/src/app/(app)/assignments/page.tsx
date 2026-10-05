@@ -7,13 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/lib/auth/session";
-import { ACTIVE_STATUSES, formatDate, formatDateTime, PROJECT_STATUS_LABELS } from "@/lib/format";
+import { ACTIVE_STATUSES, PROJECT_STATUS_LABELS } from "@/lib/format";
+import { getI18n } from "@/lib/i18n/server";
 import { canAssign } from "@/lib/permissions";
 import { listDevelopers } from "@/lib/projects";
 
 export default async function AssignmentsPage() {
   const me = await requireUser();
   if (!canAssign(me)) redirect("/");
+  const { t, fmt } = await getI18n();
 
   const [queue, developers, active] = await Promise.all([
     db
@@ -47,26 +49,26 @@ export default async function AssignmentsPage() {
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Assignments</h1>
-        <p className="text-muted-foreground">New briefs waiting for developers, and who is working on what.</p>
+        <h1 className="text-2xl font-semibold">{t("Assignments")}</h1>
+        <p className="text-muted-foreground">{t("New briefs waiting for developers, and who is working on what.")}</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Waiting for assignment ({queue.length})</CardTitle>
-          <CardDescription>Open a brief to assign developers, set the deadline and milestones.</CardDescription>
+          <CardTitle>{t("Waiting for assignment ({count})", { count: queue.length })}</CardTitle>
+          <CardDescription>{t("Open a brief to assign developers, set the deadline and milestones.")}</CardDescription>
         </CardHeader>
         <CardContent>
           {queue.length === 0 ? (
-            <p className="py-4 text-center text-muted-foreground">No briefs waiting.</p>
+            <p className="py-4 text-center text-muted-foreground">{t("No briefs waiting.")}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Project</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Submitted</TableHead>
-                  <TableHead>Installation</TableHead>
+                  <TableHead>{t("Project")}</TableHead>
+                  <TableHead>{t("Client")}</TableHead>
+                  <TableHead>{t("Submitted")}</TableHead>
+                  <TableHead>{t("Installation")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -78,8 +80,8 @@ export default async function AssignmentsPage() {
                       </Link>
                     </TableCell>
                     <TableCell>{p.clientName ?? "—"}</TableCell>
-                    <TableCell>{formatDateTime(p.createdAt)}</TableCell>
-                    <TableCell>{formatDate(p.installationDate)}</TableCell>
+                    <TableCell>{fmt.dateTime(p.createdAt)}</TableCell>
+                    <TableCell>{fmt.date(p.installationDate)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -90,12 +92,12 @@ export default async function AssignmentsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Team workload</CardTitle>
-          <CardDescription>Active projects per developer, nearest deadline first.</CardDescription>
+          <CardTitle>{t("Team workload")}</CardTitle>
+          <CardDescription>{t("Active projects per developer, nearest deadline first.")}</CardDescription>
         </CardHeader>
         <CardContent>
           {developers.length === 0 ? (
-            <p className="py-4 text-center text-muted-foreground">No developers yet. Add them from Users.</p>
+            <p className="py-4 text-center text-muted-foreground">{t("No developers yet. Add them from Users.")}</p>
           ) : (
             <ul className="divide-y">
               {developers.map((d) => {
@@ -104,9 +106,9 @@ export default async function AssignmentsPage() {
                   <li key={d.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="font-medium">
                       {d.name}
-                      {d.isHead && <span className="font-normal text-muted-foreground"> (Tech Head)</span>}
+                      {d.isHead && <span className="font-normal text-muted-foreground"> ({t("Tech Head")})</span>}
                       <div className="text-sm font-normal text-muted-foreground">
-                        {work.length} active project{work.length === 1 ? "" : "s"}
+                        {t("{count} active project(s)", { count: work.length })}
                       </div>
                     </div>
                     <ul className="flex flex-col gap-1 text-sm sm:items-end">
@@ -115,9 +117,9 @@ export default async function AssignmentsPage() {
                           <Link href={`/projects/${w.projectId}`} className="underline-offset-4 hover:underline">
                             {w.name}
                           </Link>
-                          {w.role === "lead" && <Badge variant="secondary">Lead</Badge>}
+                          {w.role === "lead" && <Badge variant="secondary">{t("Lead")}</Badge>}
                           <span className="text-muted-foreground">
-                            {PROJECT_STATUS_LABELS[w.status]} · due {formatDate(w.devDeadline)}
+                            {t(PROJECT_STATUS_LABELS[w.status])} · {t("Due {date}", { date: fmt.date(w.devDeadline) })}
                           </span>
                         </li>
                       ))}

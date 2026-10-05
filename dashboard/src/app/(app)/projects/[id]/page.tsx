@@ -13,6 +13,7 @@ import {
 import { db } from "@/db";
 import {
   financeEntries,
+  installations,
   milestones,
   progressReviews,
   projectFinance,
@@ -26,20 +27,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/lib/auth/session";
 import { outstanding, totalsByCurrency } from "@/lib/finance";
-import { formatDate, formatDateTime, formatMoney, PROJECT_STATUS_LABELS } from "@/lib/format";
+import { PROJECT_STATUS_LABELS } from "@/lib/format";
+import { getI18n } from "@/lib/i18n/server";
 import {
   canAssign,
   canEditBrief,
   canEditBudget,
   canEditInstallationDate,
   canManageFinance,
+  canManageInstallation,
   canViewBudget,
   canViewInstallationDate,
   canWorkOnProject,
 } from "@/lib/permissions";
-import { getProjectAccess, listDevelopers } from "@/lib/projects";
+import { getProjectAccess, listDevelopers, listTechnicians } from "@/lib/projects";
 import { Detail, EditSection, SmallAction } from "./project-ui";
-import { StatusActions, WorkSections } from "./work-sections";
+import { InstallationActions, StatusActions, WorkSections } from "./work-sections";
 import {
   AddMembersForm,
   DeadlineForm,
@@ -50,9 +53,11 @@ import {
   ProgressReviewForm,
   ScheduleForm,
 } from "../project-forms";
+import { InstallationForm } from "../work-forms";
 
 export default async function ProjectPage({ params }: PageProps<"/projects/[id]">) {
   const me = await requireUser();
+  const { t, fmt } = await getI18n();
   const id = z.uuid().safeParse((await params).id);
   if (!id.success) notFound();
   const access = await getProjectAccess(me, id.data);
@@ -63,8 +68,9 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
   const showSchedule = canViewInstallationDate(me);
   const assign = canAssign(me);
   const work = canWorkOnProject(me, isMember);
+  const operate = canManageInstallation(me);
 
-  const [members, milestoneRows, reviews, [createdBy], [finance], entries, [schedule], developers] =
+  const [members, milestoneRows, reviews, [createdBy], [finance], entries, [schedule], developers, [install], technicians] =
     await Promise.all([
       db
         .select({ userId: projectMembers.userId, name: users.name, role: projectMembers.role })
@@ -100,6 +106,20 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
         ? db.select().from(projectSchedule).where(eq(projectSchedule.projectId, project.id))
         : Promise.resolve([]),
       assign ? listDevelopers() : Promise.resolve([]),
+      showSchedule
+        ? db
+            .select({
+              leadTechnicianId: installations.leadTechnicianId,
+              leadName: users.name,
+              startedAt: installations.startedAt,
+              completedAt: installations.completedAt,
+              notes: installations.notes,
+            })
+            .from(installations)
+            .leftJoin(users, eq(users.id, installations.leadTechnicianId))
+            .where(eq(installations.projectId, project.id))
+        : Promise.resolve([]),
+      operate ? listTechnicians() : Promise.resolve([]),
     ]);
 
   const currency = finance?.currency ?? "EGP";
@@ -113,44 +133,44 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
     <div className="flex max-w-4xl flex-col gap-6">
       <div>
         <Link href="/projects" className="text-sm text-muted-foreground hover:underline">
-          ← Projects
+          {t("← Projects")}
         </Link>
         <h1 className="mt-1 flex flex-wrap items-center gap-3 text-2xl font-semibold">
           {project.name}
           <Badge variant={project.status === "brief_submitted" ? "outline" : "secondary"}>
-            {PROJECT_STATUS_LABELS[project.status]}
+            {t(PROJECT_STATUS_LABELS[project.status])}
           </Badge>
         </h1>
         <p className="text-muted-foreground">
           {project.clientName ? `${project.clientName} · ` : ""}
-          Brief by {createdBy?.name ?? "—"} on {formatDateTime(project.createdAt)}
+          {t("Brief by {name} on {date}", { name: createdBy?.name ?? "—", date: fmt.dateTime(project.createdAt) })}
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Brief</CardTitle>
+          <CardTitle>{t("Brief")}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
-          <Detail label="Description">
+          <Detail label={t("Description")}>
             <LinkedText text={project.description} />
           </Detail>
-          <Detail label="References">
+          <Detail label={t("References")}>
             <LinkedText text={project.refs} />
           </Detail>
           <div className="grid gap-5 sm:grid-cols-2">
-            <Detail label="Design">
+            <Detail label={t("Design")}>
               <LinkedText text={project.design} />
             </Detail>
-            <Detail label="Content">
+            <Detail label={t("Content")}>
               <LinkedText text={project.content} />
             </Detail>
           </div>
-          <Detail label="Other data">
+          <Detail label={t("Other data")}>
             <LinkedText text={project.otherData} />
           </Detail>
           {canEditBrief(me) && (
-            <EditSection label="Edit brief">
+            <EditSection label={t("Edit brief")}>
               <EditBriefForm
                 projectId={project.id}
                 initial={{
@@ -170,30 +190,32 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
 
       <Card>
         <CardHeader>
-          <CardTitle>Development</CardTitle>
+          <CardTitle>{t("Development")}</CardTitle>
           <CardDescription>
-            {project.assignedAt ? `Assigned on ${formatDateTime(project.assignedAt)}` : "Waiting for the Tech Head to assign."}
+            {project.assignedAt
+              ? t("Assigned on {date}", { date: fmt.dateTime(project.assignedAt) })
+              : t("Waiting for the Tech Head to assign.")}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
           {assign ? (
             <DeadlineForm projectId={project.id} devDeadline={project.devDeadline} />
           ) : (
-            <Detail label="Development deadline">
-              <p className="text-sm">{formatDate(project.devDeadline)}</p>
+            <Detail label={t("Development deadline")}>
+              <p className="text-sm">{fmt.date(project.devDeadline)}</p>
             </Detail>
           )}
 
-          <Detail label="Team">
+          <Detail label={t("Team")}>
             {members.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nobody assigned yet.</p>
+              <p className="text-sm text-muted-foreground">{t("Nobody assigned yet.")}</p>
             ) : (
               <ul className="divide-y rounded-lg border">
                 {members.map((m) => (
                   <li key={m.userId} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                     <span className="flex items-center gap-2">
                       {m.name}
-                      {m.role === "lead" && <Badge variant="secondary">Lead</Badge>}
+                      {m.role === "lead" && <Badge variant="secondary">{t("Lead")}</Badge>}
                     </span>
                     {assign && (
                       <span className="flex gap-1">
@@ -201,13 +223,13 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
                           <SmallAction
                             action={setLead}
                             fields={{ projectId: project.id, userId: m.userId }}
-                            label="Make lead"
+                            label={t("Make lead")}
                           />
                         )}
                         <SmallAction
                           action={removeMember}
                           fields={{ projectId: project.id, userId: m.userId }}
-                          label="Remove"
+                          label={t("Remove")}
                           variant="destructive"
                         />
                       </span>
@@ -219,36 +241,36 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
           </Detail>
 
           {assign && (
-            <EditSection label={members.length ? "Add developers" : "Assign developers"} open={!members.length}>
+            <EditSection label={members.length ? t("Add developers") : t("Assign developers")} open={!members.length}>
               <AddMembersForm projectId={project.id} developers={assignable} firstAssignment={!members.length} />
             </EditSection>
           )}
 
-          <Detail label="Milestones">
+          <Detail label={t("Milestones")}>
             {milestoneRows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No milestones.</p>
+              <p className="text-sm text-muted-foreground">{t("No milestones.")}</p>
             ) : (
               <ul className="divide-y rounded-lg border">
                 {milestoneRows.map((ms) => (
                   <li key={ms.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                     <span className={ms.status === "done" ? "text-muted-foreground line-through" : ""}>
                       {ms.title}
-                      <span className="ml-2 text-muted-foreground">{ms.dueDate ? formatDate(ms.dueDate) : ""}</span>
+                      <span className="ms-2 text-muted-foreground">{ms.dueDate ? fmt.date(ms.dueDate) : ""}</span>
                     </span>
                     {work ? (
                       <span className="flex gap-1">
                         <SmallAction
                           action={toggleMilestone}
                           fields={{ id: ms.id, done: String(ms.status !== "done") }}
-                          label={ms.status === "done" ? "Reopen" : "Mark done"}
+                          label={ms.status === "done" ? t("Reopen") : t("Mark done")}
                           variant="outline"
                         />
                         {assign && (
-                          <SmallAction action={deleteMilestone} fields={{ id: ms.id }} label="Delete" variant="destructive" />
+                          <SmallAction action={deleteMilestone} fields={{ id: ms.id }} label={t("Delete")} variant="destructive" />
                         )}
                       </span>
                     ) : (
-                      ms.status === "done" && <Badge variant="secondary">Done</Badge>
+                      ms.status === "done" && <Badge variant="secondary">{t("Done")}</Badge>
                     )}
                   </li>
                 ))}
@@ -264,22 +286,22 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
 
       <Card>
         <CardHeader>
-          <CardTitle>Progress dates</CardTitle>
-          <CardDescription>When work in progress is shown to the client or management.</CardDescription>
+          <CardTitle>{t("Progress dates")}</CardTitle>
+          <CardDescription>{t("When work in progress is shown to the client or management.")}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {reviews.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No progress dates.</p>
+            <p className="text-sm text-muted-foreground">{t("No progress dates.")}</p>
           ) : (
             <ul className="divide-y rounded-lg border">
               {reviews.map((r) => (
                 <li key={r.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                   <span>
-                    <span className="font-medium">{formatDate(r.reviewDate)}</span> — {r.title}
+                    <span className="font-medium">{fmt.date(r.reviewDate)}</span> — {r.title}
                     {r.notes && <span className="text-muted-foreground"> · {r.notes}</span>}
                   </span>
                   {canEditInstallationDate(me) && (
-                    <SmallAction action={deleteProgressReview} fields={{ id: r.id }} label="Delete" variant="destructive" />
+                    <SmallAction action={deleteProgressReview} fields={{ id: r.id }} label={t("Delete")} variant="destructive" />
                   )}
                 </li>
               ))}
@@ -292,23 +314,23 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
       {showSchedule && (
         <Card>
           <CardHeader>
-            <CardTitle>Installation</CardTitle>
-            <CardDescription>The real installation date. Hidden from developers.</CardDescription>
+            <CardTitle>{t("Installation")}</CardTitle>
+            <CardDescription>{t("The real installation date. Hidden from developers.")}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-5">
             <div className="grid gap-5 sm:grid-cols-2">
-              <Detail label="Installation date">
-                <p className="text-sm">{formatDate(schedule?.installationDate)}</p>
+              <Detail label={t("Installation date")}>
+                <p className="text-sm">{fmt.date(schedule?.installationDate, { weekday: "long" })}</p>
               </Detail>
-              <Detail label="Location">
+              <Detail label={t("Location")}>
                 <LinkedText text={schedule?.locationLink} />
               </Detail>
             </div>
-            <Detail label="Notes">
+            <Detail label={t("Notes")}>
               <LinkedText text={schedule?.notes} />
             </Detail>
             {canEditInstallationDate(me) && (
-              <EditSection label="Edit installation details">
+              <EditSection label={t("Edit installation details")}>
                 <ScheduleForm
                   projectId={project.id}
                   initial={{
@@ -319,6 +341,31 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
                 />
               </EditSection>
             )}
+
+            <div className="grid gap-5 border-t pt-5 sm:grid-cols-3">
+              <Detail label={t("Lead technician")}>
+                <p className="text-sm">{install?.leadName ?? "—"}</p>
+              </Detail>
+              <Detail label={t("Started")}>
+                <p className="text-sm">{fmt.dateTime(install?.startedAt)}</p>
+              </Detail>
+              <Detail label={t("Installed")}>
+                <p className="text-sm">{fmt.dateTime(install?.completedAt)}</p>
+              </Detail>
+            </div>
+            <Detail label={t("Installation report")}>
+              <LinkedText text={install?.notes} />
+            </Detail>
+            <InstallationActions me={me} project={project} />
+            {operate && (
+              <EditSection label={t("Edit lead technician and report")}>
+                <InstallationForm
+                  projectId={project.id}
+                  technicians={technicians}
+                  initial={{ leadTechnicianId: install?.leadTechnicianId ?? "", installNotes: install?.notes }}
+                />
+              </EditSection>
+            )}
           </CardContent>
         </Card>
       )}
@@ -326,48 +373,50 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
       {showFinance && (
         <Card>
           <CardHeader>
-            <CardTitle>Finance</CardTitle>
-            <CardDescription>Hidden from developers and Operations.</CardDescription>
+            <CardTitle>{t("Finance")}</CardTitle>
+            <CardDescription>{t("Hidden from developers and Operations.")}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-5">
             <div className="grid gap-5 sm:grid-cols-4">
-              <Detail label="Budget">
-                <p className="text-lg font-semibold tabular-nums">{formatMoney(finance?.budget, currency)}</p>
+              <Detail label={t("Budget")}>
+                <p className="text-lg font-semibold tabular-nums">{fmt.money(finance?.budget, currency)}</p>
               </Detail>
-              <Detail label="Received">
+              <Detail label={t("Received")}>
                 <p className="text-lg font-semibold tabular-nums">
-                  {formatMoney(totals[currency]?.received ?? 0, currency)}
+                  {fmt.money(totals[currency]?.received ?? 0, currency)}
                 </p>
               </Detail>
-              <Detail label="Outstanding">
+              <Detail label={t("Outstanding")}>
                 <p className={`text-lg font-semibold tabular-nums ${due !== null && due < 0 ? "text-destructive" : ""}`}>
-                  {due === null ? "—" : formatMoney(due, currency)}
+                  {due === null ? "—" : fmt.money(due, currency)}
                 </p>
               </Detail>
-              <Detail label="Expenses">
+              <Detail label={t("Expenses")}>
                 <p className="text-lg font-semibold tabular-nums">
-                  {formatMoney(totals[currency]?.expenses ?? 0, currency)}
+                  {fmt.money(totals[currency]?.expenses ?? 0, currency)}
                 </p>
               </Detail>
             </div>
             {otherCurrencies.length > 0 && (
               <p className="text-sm text-muted-foreground">
-                Also recorded in other currencies (not included above):{" "}
+                {t("Also recorded in other currencies (not included above):")}{" "}
                 {otherCurrencies
-                  .map(
-                    (c) =>
-                      `${formatMoney(totals[c].received, c)} received, ${formatMoney(totals[c].expenses, c)} expenses`,
+                  .map((c) =>
+                    t("{received} received, {expenses} expenses", {
+                      received: fmt.money(totals[c].received, c),
+                      expenses: fmt.money(totals[c].expenses, c),
+                    }),
                   )
                   .join("; ")}
               </p>
             )}
             {finance?.notes && (
-              <Detail label="Budget notes">
+              <Detail label={t("Budget notes")}>
                 <LinkedText text={finance.notes} />
               </Detail>
             )}
             {canEditBudget(me) && (
-              <EditSection label={finance ? "Edit budget" : "Set budget"} open={!finance}>
+              <EditSection label={finance ? t("Edit budget") : t("Set budget")} open={!finance}>
                 <FinanceForm
                   projectId={project.id}
                   initial={{ budget: finance?.budget, currency, financeNotes: finance?.notes }}
@@ -375,39 +424,39 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
               </EditSection>
             )}
 
-            <Detail label="Payments and expenses">
+            <Detail label={t("Payments and expenses")}>
               {entries.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nothing recorded yet.</p>
+                <p className="text-sm text-muted-foreground">{t("Nothing recorded yet.")}</p>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Reference</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>{t("Date")}</TableHead>
+                      <TableHead>{t("Type")}</TableHead>
+                      <TableHead>{t("Description")}</TableHead>
+                      <TableHead>{t("Reference")}</TableHead>
+                      <TableHead className="text-end">{t("Amount")}</TableHead>
                       {canManageFinance(me) && <TableHead />}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {entries.map((e) => (
                       <TableRow key={e.id}>
-                        <TableCell>{formatDate(e.entryDate)}</TableCell>
+                        <TableCell>{fmt.date(e.entryDate)}</TableCell>
                         <TableCell>
                           <Badge variant={e.kind === "payment" ? "secondary" : "outline"}>
-                            {e.kind === "payment" ? "Payment" : "Expense"}
+                            {e.kind === "payment" ? t("Payment") : t("Expense")}
                           </Badge>
                         </TableCell>
                         <TableCell>{e.description}</TableCell>
                         <TableCell className="text-muted-foreground">{e.reference ?? "—"}</TableCell>
-                        <TableCell className="text-right tabular-nums">
+                        <TableCell className="text-end tabular-nums">
                           {e.kind === "expense" ? "−" : ""}
-                          {formatMoney(e.amount, e.currency)}
+                          {fmt.money(e.amount, e.currency)}
                         </TableCell>
                         {canManageFinance(me) && (
-                          <TableCell className="text-right">
-                            <SmallAction action={deleteFinanceEntry} fields={{ id: e.id }} label="Delete" variant="destructive" />
+                          <TableCell className="text-end">
+                            <SmallAction action={deleteFinanceEntry} fields={{ id: e.id }} label={t("Delete")} variant="destructive" />
                           </TableCell>
                         )}
                       </TableRow>
@@ -417,7 +466,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
               )}
             </Detail>
             {canManageFinance(me) && (
-              <EditSection label="Record payment or expense">
+              <EditSection label={t("Record payment or expense")}>
                 <FinanceEntryForm projectId={project.id} defaultCurrency={currency} />
               </EditSection>
             )}

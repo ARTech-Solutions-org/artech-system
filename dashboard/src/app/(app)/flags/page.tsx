@@ -8,12 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/session";
 import { myOpenFlagsWhere } from "@/lib/flags";
-import { FLAG_TYPE_LABELS, formatDateTime } from "@/lib/format";
+import { FLAG_TYPE_LABELS } from "@/lib/format";
+import { getI18n } from "@/lib/i18n/server";
 import { canResolveFlag, DEPARTMENT_LABELS } from "@/lib/permissions";
 import { ResolveFlagForm } from "../projects/work-forms";
 
 export default async function FlagsPage() {
   const me = await requireUser();
+  const { t, fmt } = await getI18n();
   const raiser = alias(users, "raiser");
 
   const rows = await db
@@ -37,18 +39,20 @@ export default async function FlagsPage() {
   return (
     <div className="flex max-w-4xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Open flags</h1>
+        <h1 className="text-2xl font-semibold">{t("Open flags")}</h1>
         <p className="text-muted-foreground">
-          {me.isSuperAdmin
-            ? "Every open flag."
-            : `Flags waiting on ${me.department ? DEPARTMENT_LABELS[me.department] : "you"}, and flags you raised.`}
+          {me.isSuperAdmin || !me.department
+            ? t("Every open flag.")
+            : t("Flags waiting on {department}, and flags you raised.", {
+                department: t(DEPARTMENT_LABELS[me.department]),
+              })}
         </p>
       </div>
 
       {rows.length === 0 && (
         <Card>
           <CardContent>
-            <p className="py-6 text-center text-muted-foreground">Nothing open.</p>
+            <p className="py-6 text-center text-muted-foreground">{t("Nothing open.")}</p>
           </CardContent>
         </Card>
       )}
@@ -57,12 +61,16 @@ export default async function FlagsPage() {
         <Card key={f.id}>
           <CardContent className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              <Badge variant="destructive">{FLAG_TYPE_LABELS[f.type]}</Badge>
+              <Badge variant="destructive">{t(FLAG_TYPE_LABELS[f.type])}</Badge>
               <Link href={`/projects/${f.projectId}`} className="font-medium underline-offset-4 hover:underline">
                 {f.projectName}
               </Link>
               <span className="text-muted-foreground">
-                for {DEPARTMENT_LABELS[f.ownerDepartment]} · raised by {f.raisedByName} on {formatDateTime(f.createdAt)}
+                {t("For {department} · raised by {name} on {date}", {
+                  department: t(DEPARTMENT_LABELS[f.ownerDepartment]),
+                  name: f.raisedByName,
+                  date: fmt.dateTime(f.createdAt),
+                })}
               </span>
             </div>
             <LinkedText text={f.details} />

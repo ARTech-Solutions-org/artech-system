@@ -2,17 +2,29 @@ import Link from "next/link";
 import { logout } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/session";
-import { canAssign, canManageAnyUsers, canViewBudget, roleTitle } from "@/lib/permissions";
+import { countMyOpenFlags } from "@/lib/flags";
+import {
+  canAssign,
+  canManageAnyUsers,
+  canManageEquipment,
+  canRequestEquipment,
+  canViewBudget,
+  roleTitle,
+} from "@/lib/permissions";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const me = await requireUser({ allowPasswordChange: true });
+  const ready = !me.mustChangePassword;
+  const openFlags = ready ? await countMyOpenFlags(me) : 0;
 
   const nav = [
-    { href: "/", label: "Home", show: !me.mustChangePassword },
-    { href: "/projects", label: "Projects", show: !me.mustChangePassword },
-    { href: "/assignments", label: "Assignments", show: !me.mustChangePassword && canAssign(me) },
-    { href: "/finance", label: "Finance", show: !me.mustChangePassword && canViewBudget(me) },
-    { href: "/users", label: "Users", show: !me.mustChangePassword && canManageAnyUsers(me) },
+    { href: "/", label: "Home", show: ready },
+    { href: "/projects", label: "Projects", show: ready },
+    { href: "/flags", label: "Flags", show: ready, count: openFlags },
+    { href: "/assignments", label: "Assignments", show: ready && canAssign(me) },
+    { href: "/equipment", label: "Equipment", show: ready && (canRequestEquipment(me) || canManageEquipment(me)) },
+    { href: "/finance", label: "Finance", show: ready && canViewBudget(me) },
+    { href: "/users", label: "Users", show: ready && canManageAnyUsers(me) },
     { href: "/account", label: "Account", show: true },
   ].filter((n) => n.show);
 
@@ -22,8 +34,15 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         <div className="mb-6 px-2 text-lg font-semibold">Studio OS</div>
         <nav className="flex flex-col gap-1">
           {nav.map((n) => (
-            <Link key={n.href} href={n.href} className="rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+            <Link
+              key={n.href}
+              href={n.href}
+              className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+            >
               {n.label}
+              {!!n.count && (
+                <span className="rounded-full bg-destructive px-1.5 text-xs font-medium text-white">{n.count}</span>
+              )}
             </Link>
           ))}
         </nav>

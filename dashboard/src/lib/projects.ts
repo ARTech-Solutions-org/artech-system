@@ -12,12 +12,17 @@ export async function isProjectMember(projectId: string, userId: string): Promis
   return !!row;
 }
 
-/** Returns the project only if the viewer may see it. */
-export async function getVisibleProject(me: Viewer, projectId: string) {
+/** Returns the project only if the viewer may see it, plus whether they are on its team. */
+export async function getProjectAccess(me: Viewer, projectId: string) {
   const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
   if (!project) return null;
-  if (!canSeeAllProjects(me) && !(await isProjectMember(projectId, me.id))) return null;
-  return project;
+  const isMember = await isProjectMember(projectId, me.id);
+  if (!canSeeAllProjects(me) && !isMember) return null;
+  return { project, isMember };
+}
+
+export async function getVisibleProject(me: Viewer, projectId: string) {
+  return (await getProjectAccess(me, projectId))?.project ?? null;
 }
 
 export async function projectExists(projectId: string): Promise<boolean> {

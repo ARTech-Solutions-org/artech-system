@@ -98,6 +98,7 @@ Each phase ends with a demo and your sign-off before the next starts.
 - Flags: raise, assign to owning department, resolve.
 - Installation guide: steps + demo video link.
 - **Done when:** a developer can take an assigned project to "Ready for Installation".
+- **Status: done.** Home shows "My projects" (next milestone, open flags, deadline). Equipment page lists stock, who is using it and the waitlist; heads of Development/Operations add and edit items (seeded: printer, Meta Quest 3, 3 NFC readers via `npm run db:seed-equipment`). Requests are approved when units are free, otherwise waitlisted and approved automatically, oldest first, when units come back. Flags page shows open flags for your department or that you raised. Status flow: developer moves Assigned → In development → Internal review; Tech Head approves to Ready for installation (requires steps and demo video link) or sends back.
 
 ### Phase 5 — Operations
 - Installation calendar with real dates.

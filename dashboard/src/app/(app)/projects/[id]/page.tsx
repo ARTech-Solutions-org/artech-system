@@ -22,7 +22,6 @@ import {
 } from "@/db/schema";
 import { LinkedText } from "@/components/linked-text";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/lib/auth/session";
@@ -36,8 +35,11 @@ import {
   canManageFinance,
   canViewBudget,
   canViewInstallationDate,
+  canWorkOnProject,
 } from "@/lib/permissions";
-import { getVisibleProject, listDevelopers } from "@/lib/projects";
+import { getProjectAccess, listDevelopers } from "@/lib/projects";
+import { Detail, EditSection, SmallAction } from "./project-ui";
+import { StatusActions, WorkSections } from "./work-sections";
 import {
   AddMembersForm,
   DeadlineForm,
@@ -49,57 +51,18 @@ import {
   ScheduleForm,
 } from "../project-forms";
 
-function EditSection({ label, open, children }: { label: string; open?: boolean; children: React.ReactNode }) {
-  return (
-    <details open={open} className="group rounded-lg border p-4">
-      <summary className="cursor-pointer text-sm font-medium select-none">{label}</summary>
-      <div className="mt-4">{children}</div>
-    </details>
-  );
-}
-
-function Detail({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{label}</div>
-      {children}
-    </div>
-  );
-}
-
-function SmallAction({
-  action,
-  fields,
-  label,
-  variant = "ghost",
-}: {
-  action: (formData: FormData) => Promise<void>;
-  fields: Record<string, string>;
-  label: string;
-  variant?: "ghost" | "destructive" | "outline";
-}) {
-  return (
-    <form action={action}>
-      {Object.entries(fields).map(([k, v]) => (
-        <input key={k} type="hidden" name={k} value={v} />
-      ))}
-      <Button type="submit" size="xs" variant={variant}>
-        {label}
-      </Button>
-    </form>
-  );
-}
-
 export default async function ProjectPage({ params }: PageProps<"/projects/[id]">) {
   const me = await requireUser();
   const id = z.uuid().safeParse((await params).id);
   if (!id.success) notFound();
-  const project = await getVisibleProject(me, id.data);
-  if (!project) notFound();
+  const access = await getProjectAccess(me, id.data);
+  if (!access) notFound();
+  const { project, isMember } = access;
 
   const showFinance = canViewBudget(me);
   const showSchedule = canViewInstallationDate(me);
   const assign = canAssign(me);
+  const work = canWorkOnProject(me, isMember);
 
   const [members, milestoneRows, reviews, [createdBy], [finance], entries, [schedule], developers] =
     await Promise.all([
@@ -272,7 +235,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
                       {ms.title}
                       <span className="ml-2 text-muted-foreground">{ms.dueDate ? formatDate(ms.dueDate) : ""}</span>
                     </span>
-                    {assign ? (
+                    {work ? (
                       <span className="flex gap-1">
                         <SmallAction
                           action={toggleMilestone}
@@ -280,7 +243,9 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
                           label={ms.status === "done" ? "Reopen" : "Mark done"}
                           variant="outline"
                         />
-                        <SmallAction action={deleteMilestone} fields={{ id: ms.id }} label="Delete" variant="destructive" />
+                        {assign && (
+                          <SmallAction action={deleteMilestone} fields={{ id: ms.id }} label="Delete" variant="destructive" />
+                        )}
                       </span>
                     ) : (
                       ms.status === "done" && <Badge variant="secondary">Done</Badge>
@@ -291,8 +256,11 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
             )}
           </Detail>
           {assign && <MilestoneForm projectId={project.id} />}
+          <StatusActions me={me} project={project} isMember={isMember} />
         </CardContent>
       </Card>
+
+      <WorkSections me={me} project={project} isMember={isMember} />
 
       <Card>
         <CardHeader>

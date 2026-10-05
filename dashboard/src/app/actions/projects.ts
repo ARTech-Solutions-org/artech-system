@@ -25,8 +25,9 @@ import {
   canEditBudget,
   canEditInstallationDate,
   canManageFinance,
+  canWorkOnProject,
 } from "@/lib/permissions";
-import { projectExists } from "@/lib/projects";
+import { getProjectAccess, projectExists } from "@/lib/projects";
 import type { FormState } from "./auth";
 
 const optionalText = z
@@ -467,9 +468,12 @@ export async function addMilestone(_: FormState, formData: FormData): Promise<Fo
 
 export async function toggleMilestone(formData: FormData) {
   const me = await requireUser();
-  if (!canAssign(me)) throw new Error("Only the Tech Head can update milestones.");
   const id = z.uuid().parse(formData.get("id"));
   const done = formData.get("done") === "true";
+
+  const [milestone] = await db.select({ projectId: milestones.projectId }).from(milestones).where(eq(milestones.id, id));
+  const access = milestone && (await getProjectAccess(me, milestone.projectId));
+  if (!access || !canWorkOnProject(me, access.isMember)) throw new Error("You cannot update this milestone.");
 
   await db
     .update(milestones)

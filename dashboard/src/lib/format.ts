@@ -39,6 +39,13 @@ export const PROJECT_STATUS_LABELS = {
 
 export type ProjectStatus = keyof typeof PROJECT_STATUS_LABELS;
 
+export const FLAG_TYPE_LABELS = {
+  blocked: "Blocked",
+  needs_data: "Needs data",
+  needs_assets: "Needs assets",
+  other: "Other",
+} as const;
+
 /** Statuses that still count toward a developer's workload. */
 export const ACTIVE_STATUSES: ProjectStatus[] = [
   "assigned",

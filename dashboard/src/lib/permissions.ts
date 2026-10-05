@@ -110,6 +110,21 @@ export function canAssign(v: Viewer): boolean {
   return v.isSuperAdmin || isTechHead(v);
 }
 
+/** Developers working on the project, plus the Tech Head: milestones, installation guide, status moves. */
+export function canWorkOnProject(v: Viewer, isMember: boolean): boolean {
+  return v.isSuperAdmin || isTechHead(v) || (v.department === "development" && isMember);
+}
+
+/** Add equipment, change stock and status. */
+export function canManageEquipment(v: Viewer): boolean {
+  return v.isSuperAdmin || (v.isHead && (v.department === "development" || v.department === "operations"));
+}
+
+/** The department that must act, the person who raised it, the Tech Head, or the super admin. */
+export function canResolveFlag(v: Viewer, flag: { ownerDepartment: Department; raisedBy: string }): boolean {
+  return v.isSuperAdmin || isTechHead(v) || v.department === flag.ownerDepartment || v.id === flag.raisedBy;
+}
+
 export function canRequestEquipment(v: Viewer): boolean {
   return v.isSuperAdmin || v.department === "development" || v.department === "operations";
 }

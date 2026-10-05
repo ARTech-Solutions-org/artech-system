@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useId } from "react";
-import type { FormState } from "@/app/actions/auth";
 import {
   addFinanceEntry,
   addMembers,
@@ -13,44 +12,11 @@ import {
   setDevDeadline,
   updateBrief,
 } from "@/app/actions/projects";
+import { Field, Submit, useForm, type Values } from "@/components/form-fields";
 import { FormMessage, selectClass } from "@/components/form-message";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { CURRENCIES } from "@/lib/format";
-
-type Values = Record<string, string | null | undefined>;
-
-function Field({
-  label,
-  name,
-  values,
-  hint,
-  multiline,
-  className,
-  ...props
-}: {
-  label: string;
-  name: string;
-  values: Values;
-  hint?: string;
-  multiline?: boolean;
-  className?: string;
-} & Omit<React.ComponentProps<"input">, "name" | "defaultValue">) {
-  const id = useId();
-  return (
-    <div className={`flex flex-col gap-1.5 ${className ?? ""}`}>
-      <Label htmlFor={id}>{label}</Label>
-      {multiline ? (
-        <Textarea id={id} name={name} defaultValue={values[name] ?? ""} rows={3} placeholder={props.placeholder} />
-      ) : (
-        <Input id={id} name={name} defaultValue={values[name] ?? ""} {...props} />
-      )}
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-    </div>
-  );
-}
 
 function CurrencySelect({ values, name = "currency" }: { values: Values; name?: string }) {
   const id = useId();
@@ -66,21 +32,6 @@ function CurrencySelect({ values, name = "currency" }: { values: Values; name?: 
       </select>
     </div>
   );
-}
-
-function Submit({ pending, label, pendingLabel }: { pending: boolean; label: string; pendingLabel: string }) {
-  return (
-    <Button type="submit" disabled={pending} className="self-start">
-      {pending ? pendingLabel : label}
-    </Button>
-  );
-}
-
-/** Keeps typed values after a failed submit; React resets forms once an action finishes. */
-function useForm(action: (s: FormState, f: FormData) => Promise<FormState>, initial: Values = {}) {
-  const [state, formAction, pending] = useActionState(action, undefined);
-  const values: Values = state?.values ?? initial;
-  return { state, formAction, pending, values, key: JSON.stringify(values) };
 }
 
 const LINES_HINT = "One link or note per line.";

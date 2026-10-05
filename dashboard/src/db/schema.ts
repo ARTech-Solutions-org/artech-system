@@ -312,6 +312,24 @@ export const equipmentRequests = pgTable(
   ],
 );
 
+// Outside companies we rent equipment from; `equipment` lists what we rent from each one.
+export const suppliers = pgTable(
+  "suppliers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    mobile: text("mobile").notNull(),
+    equipment: text("equipment")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    notes: text("notes"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (t) => [index("suppliers_name_idx").on(t.name)],
+);
+
 export const installations = pgTable(
   "installations",
   {

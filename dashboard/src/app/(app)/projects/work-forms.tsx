@@ -12,10 +12,11 @@ import {
   saveInstallation,
   translateText,
 } from "@/app/actions/work";
-import { BellRing, Languages, Plus, X } from "lucide-react";
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { BellRing, Languages, Plus } from "lucide-react";
+import { useActionState, useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Field, SelectField, Submit, useForm, type Values } from "@/components/form-fields";
 import { FormMessage } from "@/components/form-message";
+import { Modal } from "@/components/modal";
 import { useI18n } from "@/components/i18n-provider";
 import { type Person, PeoplePicker } from "@/components/people-picker";
 import { Button } from "@/components/ui/button";
@@ -169,39 +170,16 @@ export function RemindFlagForm({ flagId }: { flagId: string }) {
 export function NewRequestButton(props: Omit<Parameters<typeof RaiseFlagForm>[0], "onSent">) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  const close = useCallback(() => setOpen(false), []);
   return (
     <>
       <Button onClick={() => setOpen(true)}>
         <Plus />
         {t("New request")}
       </Button>
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:pt-16"
-          onMouseDown={(e) => e.target === e.currentTarget && setOpen(false)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={t("New request")}
-            className="w-full max-w-2xl rounded-xl border bg-background p-5 shadow-lg"
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">{t("New request")}</h2>
-              <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label={t("Close")}>
-                <X />
-              </Button>
-            </div>
-            <RaiseFlagForm {...props} onSent={() => setOpen(false)} />
-          </div>
-        </div>
-      )}
+      <Modal open={open} onClose={close} title={t("New request")}>
+        <RaiseFlagForm {...props} onSent={close} />
+      </Modal>
     </>
   );
 }

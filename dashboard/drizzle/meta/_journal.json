@@ -57,6 +57,13 @@
       "when": 1791199206385,
       "tag": "0007_flag_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791203522962,
+      "tag": "0008_suppliers",
+      "breakpoints": true
     }
   ]
 }

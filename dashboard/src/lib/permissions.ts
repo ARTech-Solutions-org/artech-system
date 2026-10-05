@@ -142,6 +142,11 @@ export function canRequestEquipment(v: Viewer): boolean {
   return v.isSuperAdmin || v.department === "development" || v.department === "operations";
 }
 
+/** View the supplier list and add, edit or remove suppliers. */
+export function canManageSuppliers(v: Viewer): boolean {
+  return v.isSuperAdmin || v.department === "business" || v.department === "operations";
+}
+
 export function canWriteInstallationGuide(v: Viewer): boolean {
   return v.isSuperAdmin || v.department === "development";
 }

@@ -6,25 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/session";
 import { ACTIVE_STATUSES, PROJECT_STATUS_LABELS } from "@/lib/format";
-import type { Msg } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 import { daysBetween, listInstallations, todayInCairo, whenLabel } from "@/lib/installations";
-import {
-  canAssign,
-  canEditBrief,
-  canEditBudget,
-  canEditInstallationDate,
-  canManageAnyUsers,
-  canManageFinance,
-  canManageInstallation,
-  canRaiseFlag,
-  canRequestEquipment,
-  canSeeAllProjects,
-  canViewBudget,
-  canViewInstallationDate,
-  canWriteInstallationGuide,
-  roleTitle,
-} from "@/lib/permissions";
+import { canManageInstallation, canSeeAllProjects, roleTitle } from "@/lib/permissions";
 import { Overview } from "./overview";
 
 type Check = { name: string; ok: boolean; detail: string };
@@ -44,23 +28,6 @@ export default async function Home() {
   const me = await requireUser();
   const { t, fmt } = await getI18n();
   const operate = canManageInstallation(me);
-
-  const access: [Msg, boolean][] = [
-    [canSeeAllProjects(me) ? "See all projects" : "See only projects you are assigned to", true],
-    ["Create and edit briefs", canEditBrief(me)],
-    [canEditBudget(me) ? "View and edit budgets" : "View budgets", canViewBudget(me)],
-    ["Record payments and expenses", canManageFinance(me)],
-    [
-      canEditInstallationDate(me) ? "View and edit real installation dates" : "View real installation dates",
-      canViewInstallationDate(me),
-    ],
-    ["Assign developers, deadlines and milestones", canAssign(me)],
-    ["Request equipment", canRequestEquipment(me)],
-    ["Raise flags", canRaiseFlag(me)],
-    ["Write installation steps and demo videos", canWriteInstallationGuide(me)],
-    ["Run installations", operate],
-    ["Manage team members", canManageAnyUsers(me)],
-  ];
 
   const today = todayInCairo();
   const [checks, myProjects, upcoming] = await Promise.all([
@@ -173,21 +140,6 @@ export default async function Home() {
           </CardContent>
         </Card>
       )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("Your access")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="grid gap-1.5 sm:grid-cols-2">
-            {access.map(([label, allowed]) => (
-              <li key={label} className={allowed ? "" : "text-muted-foreground line-through"}>
-                {allowed ? "✓" : "✗"} {t(label)}
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
 
       {checks.length > 0 && (
         <Card>

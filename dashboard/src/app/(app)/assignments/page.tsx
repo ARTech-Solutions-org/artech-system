@@ -1,0 +1,134 @@
+import { asc, eq, inArray } from "drizzle-orm";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { db } from "@/db";
+import { projectMembers, projects, projectSchedule } from "@/db/schema";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { requireUser } from "@/lib/auth/session";
+import { ACTIVE_STATUSES, formatDate, formatDateTime, PROJECT_STATUS_LABELS } from "@/lib/format";
+import { canAssign } from "@/lib/permissions";
+import { listDevelopers } from "@/lib/projects";
+
+export default async function AssignmentsPage() {
+  const me = await requireUser();
+  if (!canAssign(me)) redirect("/");
+
+  const [queue, developers, active] = await Promise.all([
+    db
+      .select({
+        id: projects.id,
+        name: projects.name,
+        clientName: projects.clientName,
+        createdAt: projects.createdAt,
+        installationDate: projectSchedule.installationDate,
+      })
+      .from(projects)
+      .leftJoin(projectSchedule, eq(projectSchedule.projectId, projects.id))
+      .where(eq(projects.status, "brief_submitted"))
+      .orderBy(asc(projects.createdAt)),
+    listDevelopers(),
+    db
+      .select({
+        userId: projectMembers.userId,
+        role: projectMembers.role,
+        projectId: projects.id,
+        name: projects.name,
+        status: projects.status,
+        devDeadline: projects.devDeadline,
+      })
+      .from(projectMembers)
+      .innerJoin(projects, eq(projects.id, projectMembers.projectId))
+      .where(inArray(projects.status, ACTIVE_STATUSES))
+      .orderBy(asc(projects.devDeadline)),
+  ]);
+
+  return (
+    <div className="flex max-w-5xl flex-col gap-6">
+      <div>
+        <h1 className="text-2xl font-semibold">Assignments</h1>
+        <p className="text-muted-foreground">New briefs waiting for developers, and who is working on what.</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Waiting for assignment ({queue.length})</CardTitle>
+          <CardDescription>Open a brief to assign developers, set the deadline and milestones.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {queue.length === 0 ? (
+            <p className="py-4 text-center text-muted-foreground">No briefs waiting.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Project</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Submitted</TableHead>
+                  <TableHead>Installation</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {queue.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">
+                      <Link href={`/projects/${p.id}`} className="underline-offset-4 hover:underline">
+                        {p.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{p.clientName ?? "—"}</TableCell>
+                    <TableCell>{formatDateTime(p.createdAt)}</TableCell>
+                    <TableCell>{formatDate(p.installationDate)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Team workload</CardTitle>
+          <CardDescription>Active projects per developer, nearest deadline first.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {developers.length === 0 ? (
+            <p className="py-4 text-center text-muted-foreground">No developers yet. Add them from Users.</p>
+          ) : (
+            <ul className="divide-y">
+              {developers.map((d) => {
+                const work = active.filter((a) => a.userId === d.id);
+                return (
+                  <li key={d.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="font-medium">
+                      {d.name}
+                      {d.isHead && <span className="font-normal text-muted-foreground"> (Tech Head)</span>}
+                      <div className="text-sm font-normal text-muted-foreground">
+                        {work.length} active project{work.length === 1 ? "" : "s"}
+                      </div>
+                    </div>
+                    <ul className="flex flex-col gap-1 text-sm sm:items-end">
+                      {work.map((w) => (
+                        <li key={w.projectId} className="flex items-center gap-2">
+                          <Link href={`/projects/${w.projectId}`} className="underline-offset-4 hover:underline">
+                            {w.name}
+                          </Link>
+                          {w.role === "lead" && <Badge variant="secondary">Lead</Badge>}
+                          <span className="text-muted-foreground">
+                            {PROJECT_STATUS_LABELS[w.status]} · due {formatDate(w.devDeadline)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

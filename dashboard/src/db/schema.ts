@@ -52,6 +52,8 @@ export const equipmentRequestStatus = pgEnum("equipment_request_status", [
   "cancelled",
 ]);
 
+export const financeEntryKind = pgEnum("finance_entry_kind", ["payment", "expense"]);
+
 export const installationStatus = pgEnum("installation_status", ["scheduled", "in_progress", "done"]);
 
 const timestamps = {
@@ -108,11 +110,11 @@ export const projects = pgTable(
     name: text("name").notNull(),
     clientName: text("client_name"),
     description: text("description"),
-    assetsNotes: text("assets_notes"),
-    designLink: text("design_link"),
-    contentLink: text("content_link"),
-    referenceLink: text("reference_link"),
-    voiceNoteLink: text("voice_note_link"),
+    // Free text, one link or note per line.
+    refs: text("refs"),
+    design: text("design"),
+    content: text("content"),
+    otherData: text("other_data"),
     status: projectStatus("status").notNull().default("brief_submitted"),
     devDeadline: date("dev_deadline"),
     createdBy: uuid("created_by").references(() => users.id),
@@ -134,6 +136,29 @@ export const projectFinance = pgTable("project_finance", {
   updatedBy: uuid("updated_by").references(() => users.id),
   ...timestamps,
 });
+
+// Restricted like project_finance.
+export const financeEntries = pgTable(
+  "finance_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    kind: financeEntryKind("kind").notNull(),
+    amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+    currency: text("currency").notNull(),
+    entryDate: date("entry_date").notNull(),
+    description: text("description").notNull(),
+    reference: text("reference"),
+    createdBy: uuid("created_by").references(() => users.id),
+    ...timestamps,
+  },
+  (t) => [
+    check("finance_entries_amount_positive", sql`${t.amount} > 0`),
+    index("finance_entries_project_idx").on(t.projectId),
+  ],
+);
 
 // Restricted: hidden from Developers.
 export const projectSchedule = pgTable("project_schedule", {

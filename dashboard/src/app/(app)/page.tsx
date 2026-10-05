@@ -8,6 +8,7 @@ import {
   canEditBudget,
   canEditInstallationDate,
   canManageAnyUsers,
+  canManageFinance,
   canManageInstallation,
   canRaiseFlag,
   canRequestEquipment,
@@ -38,6 +39,7 @@ export default async function Home() {
     [canSeeAllProjects(me) ? "See all projects" : "See only projects you are assigned to", true],
     ["Create and edit briefs", canEditBrief(me)],
     [canEditBudget(me) ? "View and edit budgets" : "View budgets", canViewBudget(me)],
+    ["Record payments and expenses", canManageFinance(me)],
     [
       canEditInstallationDate(me) ? "View and edit real installation dates" : "View real installation dates",
       canViewInstallationDate(me),

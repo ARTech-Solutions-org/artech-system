@@ -2,13 +2,16 @@ import Link from "next/link";
 import { logout } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/session";
-import { canManageAnyUsers, roleTitle } from "@/lib/permissions";
+import { canAssign, canManageAnyUsers, canViewBudget, roleTitle } from "@/lib/permissions";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const me = await requireUser({ allowPasswordChange: true });
 
   const nav = [
     { href: "/", label: "Home", show: !me.mustChangePassword },
+    { href: "/projects", label: "Projects", show: !me.mustChangePassword },
+    { href: "/assignments", label: "Assignments", show: !me.mustChangePassword && canAssign(me) },
+    { href: "/finance", label: "Finance", show: !me.mustChangePassword && canViewBudget(me) },
     { href: "/users", label: "Users", show: !me.mustChangePassword && canManageAnyUsers(me) },
     { href: "/account", label: "Account", show: true },
   ].filter((n) => n.show);

@@ -85,6 +85,12 @@ Each phase ends with a demo and your sign-off before the next starts.
 - Accounting: budget / payments view and editing.
 - Tech Head: unassigned briefs queue, assign developers, dev deadline, milestones, add members mid-project, team workload.
 - **Done when:** a brief can go from created to assigned with correct visibility at each step.
+- Brief fields: name, client, description, references, design, content, other data (one link or note per line).
+- Budget with currency dropdown; Accounting records payments received and expenses (any currency);
+  Finance page shows budget / received / outstanding / expenses per project and totals per currency.
+- Tech Head: Assignments page (queue + workload); on the project: assign developers + lead, dev deadline,
+  milestones, add/remove members mid-project.
+- **Status:** done.
 
 ### Phase 4 — Developer workspace
 - "My projects" with dev deadline and milestones.

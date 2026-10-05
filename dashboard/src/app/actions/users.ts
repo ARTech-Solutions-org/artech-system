@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { audit } from "@/lib/audit";
 import { hashPassword } from "@/lib/auth/password";
+import { isUniqueViolation } from "@/lib/db-errors";
 import { deleteUserSessions, requireUser } from "@/lib/auth/session";
 import { canManageUser, canManageUsersIn, canSetHead, DEPARTMENTS, type Viewer } from "@/lib/permissions";
 import type { FormState } from "./auth";
@@ -21,13 +22,6 @@ const CreateUserSchema = z.object({
   isHead: z.literal("on").optional(),
   password: tempPassword,
 });
-
-// Drizzle wraps driver errors, so the Postgres code may be on the error itself or on its cause.
-function isUniqueViolation(e: unknown): boolean {
-  if (typeof e !== "object" || e === null) return false;
-  if ((e as { code?: string }).code === "23505") return true;
-  return isUniqueViolation((e as { cause?: unknown }).cause);
-}
 
 export async function createUser(_: FormState, formData: FormData): Promise<FormState> {
   const me = await requireUser();

@@ -15,6 +15,20 @@
       "when": 1791127833188,
       "tag": "0001_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791188178057,
+      "tag": "0002_drop_old_brief_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791188194630,
+      "tag": "0003_brief_fields",
+      "breakpoints": true
     }
   ]
 }

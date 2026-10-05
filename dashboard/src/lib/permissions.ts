@@ -70,6 +70,10 @@ export function canSeeAllProjects(v: Viewer): boolean {
   return !isDeveloper(v);
 }
 
+export function canViewProject(v: Viewer, isMember: boolean): boolean {
+  return canSeeAllProjects(v) || isMember;
+}
+
 export function canEditBrief(v: Viewer): boolean {
   return v.isSuperAdmin || v.department === "business";
 }
@@ -80,6 +84,11 @@ export function canViewBudget(v: Viewer): boolean {
 
 export function canEditBudget(v: Viewer): boolean {
   return v.isSuperAdmin || v.department === "business" || v.department === "accounting";
+}
+
+/** Record payments received and expenses. */
+export function canManageFinance(v: Viewer): boolean {
+  return v.isSuperAdmin || v.department === "accounting";
 }
 
 export function canViewInstallationDate(v: Viewer): boolean {

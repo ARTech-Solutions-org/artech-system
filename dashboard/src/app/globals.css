@@ -8,6 +8,11 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
+  --color-brand-black: var(--brand-black);
+  --color-brand-purple: var(--brand-purple);
+  --color-brand-info: var(--brand-info);
+  --color-brand-success: var(--brand-success);
+  --color-brand-warning: var(--brand-warning);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -48,39 +53,46 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Angulr-style palette around the ARTECH black and white identity. */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --brand-black: #0b0d10;
+  --brand-purple: #7266ba;
+  --brand-info: #23b7e5;
+  --brand-success: #27c24c;
+  --brand-warning: #f4b400;
+
+  --background: #f0f3f4;
+  --foreground: #363f44;
+  --card: #ffffff;
+  --card-foreground: #363f44;
+  --popover: #ffffff;
+  --popover-foreground: #363f44;
+  --primary: var(--brand-purple);
+  --primary-foreground: #ffffff;
+  --secondary: #edf1f2;
+  --secondary-foreground: #363f44;
+  --muted: #edf1f2;
+  --muted-foreground: #78868e;
+  --accent: #edf1f2;
+  --accent-foreground: #363f44;
+  --destructive: #f05050;
+  --border: #dee5e7;
+  --input: #cfdadd;
+  --ring: #a59ed8;
+  --chart-1: var(--brand-purple);
+  --chart-2: var(--brand-info);
+  --chart-3: var(--brand-success);
+  --chart-4: var(--brand-warning);
+  --chart-5: #f05050;
+  --radius: 0.3rem;
+  --sidebar: #161a21;
+  --sidebar-foreground: #a3adb8;
+  --sidebar-primary: var(--brand-purple);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1f252e;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #232a34;
+  --sidebar-ring: #a59ed8;
 }
 
 .dark {

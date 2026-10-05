@@ -21,7 +21,7 @@ const plexArabic = IBM_Plex_Sans_Arabic({
 });
 
 export const metadata: Metadata = {
-  title: "Studio OS",
+  title: "ARTECH Studio OS",
   description: "Projects, team, equipment and installations",
 };
 

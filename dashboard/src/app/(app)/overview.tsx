@@ -46,11 +46,21 @@ export async function Overview() {
     .map(countOf)
     .reduce((a, b) => a + b, 0);
 
-  const tiles: { label: Msg; value: string | number; href: string; alert?: boolean }[] = [
-    { label: "Active projects", value: active, href: "/projects" },
-    { label: "Open requests", value: openFlags.count, href: "/requests", alert: openFlags.count > 0 },
-    { label: "Past dev deadline", value: overdue, href: "/projects", alert: overdue > 0 },
-    { label: "Equipment in use", value: `${units.inUse} / ${units.total}`, href: "/equipment" },
+  const tiles: { label: Msg; value: string | number; href: string; tone: string }[] = [
+    { label: "Active projects", value: active, href: "/projects", tone: "bg-brand-purple text-white" },
+    { label: "Open requests", value: openFlags.count, href: "/requests", tone: "bg-brand-info text-white" },
+    {
+      label: "Past dev deadline",
+      value: overdue,
+      href: "/projects",
+      tone: overdue > 0 ? "bg-destructive text-white" : "bg-card ring-1 ring-border",
+    },
+    {
+      label: "Equipment in use",
+      value: `${units.inUse} / ${units.total}`,
+      href: "/equipment",
+      tone: "bg-card ring-1 ring-border",
+    },
   ];
 
   return (
@@ -61,11 +71,15 @@ export async function Overview() {
       <CardContent className="flex flex-col gap-5">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {tiles.map((tile) => (
-            <Link key={tile.label} href={tile.href} className="rounded-lg border p-3 hover:bg-muted/50">
-              <div className={`text-2xl font-semibold ${tile.alert ? "text-destructive" : ""}`} dir="ltr">
+            <Link
+              key={tile.label}
+              href={tile.href}
+              className={`rounded-md px-4 py-5 text-center transition-opacity hover:opacity-90 ${tile.tone}`}
+            >
+              <div className="text-3xl font-light" dir="ltr">
                 {tile.value}
               </div>
-              <div className="text-xs text-muted-foreground">{t(tile.label)}</div>
+              <div className="mt-1 text-xs opacity-80">{t(tile.label)}</div>
             </Link>
           ))}
         </div>

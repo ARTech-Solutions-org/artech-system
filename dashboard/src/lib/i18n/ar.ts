@@ -690,4 +690,5 @@ export const ar = {
   "{by} sent you this request on {date} and is still waiting:": "أرسل لك {by} هذا الطلب في {date} وما زال بانتظاره:",
   "Reminder for your team: {title}": "تذكير لفريقك: {title}",
   "{by} is still waiting on {names} since {date}:": "ما زال {by} بانتظار {names} منذ {date}:",
+  Navigation: "القائمة",
 } as const;

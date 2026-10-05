@@ -115,16 +115,29 @@ Each phase ends with a demo and your sign-off before the next starts.
 - Google Sheets export: Projects + assigned developers.
 - Retire the old Projects Hub form workflow.
 - **Done when:** notifications arrive and the export sheet stays in sync.
+- **Status: done (Sheets export deferred).** Emails go out in each person's dashboard language. The dashboard writes each email, logs it in `notifications` and hands the batch to the n8n workflow "[Studio OS] Send email", which sends it over SMTP. n8n runs "Daily reminders" (8:00 Cairo: dev deadlines in 3 days/1 day/overdue, installations in 2 days, past installation dates, equipment not returned) and "Weekly summary" (Sunday 9:00, to heads and admins) by calling `/api/automations/daily|weekly` with a shared secret. `npm run n8n:setup` creates the credentials and workflows. Locally emails land in Mailpit (http://localhost:8025) until the real sender is configured.
 
 ### Phase 7 — Overview + audit
 - Overview dashboard per role (status counts, upcoming deadlines/installations, open flags, equipment usage).
 - Audit log viewer (who changed what, when).
 - Automation health page (n8n workflow status, recent failures).
+- **Status: done.** Home shows an overview for everyone who sees all projects. Super admins get Activity (audit log with filters) and Automations (email counts, test/daily/weekly run buttons, n8n workflows and runs, email log).
 
 ### Phase 8 — Pilot + go-live
 - Deploy where the team can reach it (see "What I need from you").
 - One week running with real users, fix feedback.
 - Switch off the old system.
+- **Deployment prep: done.** `dashboard/Dockerfile` builds the app; on start it applies migrations and creates the `admin` account only if no super admin exists. `docker compose --profile app` adds the dashboard and Caddy (automatic HTTPS for `DOMAIN`).
+
+#### Deploying to the server
+1. Point a DNS A record (e.g. `studio.artechsolutions.io`) at the server. Install Docker. Open ports 80 and 443.
+2. Copy the repo to the server, then `cp .env.example .env` and fill it in (strong passwords, `DOMAIN`, `APP_URL`, `AUTOMATION_SECRET`, SMTP password). Keep `DASHBOARD_URL=http://dashboard:3000`.
+3. `docker compose --profile app up -d --build`
+4. Open the n8n editor through a tunnel (`ssh -L 5678:127.0.0.1:5678 user@server`, then http://localhost:5678), create the owner account and an API key (Settings > n8n API). Put the key in `.env` as `N8N_API_KEY`, then `docker compose --profile app up -d`.
+5. `docker compose exec dashboard npm run n8n:setup` (creates the SMTP credential from `SMTP_*`, the secret and the three workflows).
+6. Log in at `https://DOMAIN` as `admin` / `admin123`, change the password, set a real email on your user, then use Automations > "Send test email".
+
+To bring the data from this machine, do this between steps 2 and 3: run `docker exec studio-os-postgres pg_dump -U studio studio_os > studio_os.sql` here, copy the file over, then on the server `docker compose up -d postgres` and `docker compose exec -T postgres psql -U studio studio_os < studio_os.sql`. Remove example projects first with `npm run db:seed-examples -- --remove`.
 
 ## Pipeline statuses
 

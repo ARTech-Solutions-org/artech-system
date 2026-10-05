@@ -14,9 +14,13 @@ async function main() {
   const client = postgres(process.env.DATABASE_URL!, { max: 1 });
   const db = drizzle(client);
 
-  const existing = await db.select({ id: users.id }).from(users).where(sql`lower(${users.email}) = ${EMAIL.toLowerCase()}`);
+  // Any super admin counts, so renaming the admin login later never brings back the default account.
+  const existing = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(sql`${users.isSuperAdmin} or lower(${users.email}) = ${EMAIL.toLowerCase()}`);
   if (existing.length) {
-    console.log(`Super admin "${EMAIL}" already exists. Nothing to do.`);
+    console.log("A super admin already exists. Nothing to do.");
   } else {
     await db.insert(users).values({
       name: "Super Admin",

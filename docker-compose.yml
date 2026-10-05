@@ -27,7 +27,8 @@ services:
     container_name: n8n
     restart: unless-stopped
     ports:
-      - "5678:5678"
+      # Local only: the dashboard talks to n8n over the Docker network; open the editor through an SSH tunnel on the server.
+      - "127.0.0.1:5678:5678"
     environment:
       TZ: Africa/Cairo
       GENERIC_TIMEZONE: Africa/Cairo
@@ -57,6 +58,47 @@ services:
     ports:
       - "127.0.0.1:8025:8025"
 
+  # Server only (`docker compose --profile app up -d`). Locally the dashboard runs with `npm run dev`.
+  dashboard:
+    build: ./dashboard
+    container_name: studio-os-dashboard
+    restart: unless-stopped
+    profiles: [app]
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/studio_os
+      N8N_URL: http://n8n:5678
+      N8N_API_KEY: ${N8N_API_KEY:-}
+      APP_URL: ${APP_URL:-}
+      MAIL_FROM: ${MAIL_FROM:-Studio OS <developers@artechsolutions.io>}
+      AUTOMATION_SECRET: ${AUTOMATION_SECRET:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      GOOGLE_TRANSLATE_API_KEY: ${GOOGLE_TRANSLATE_API_KEY:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # HTTPS in front of the dashboard. Set DOMAIN in .env; certificates are issued automatically.
+  caddy:
+    image: caddy:2-alpine
+    container_name: studio-os-caddy
+    restart: unless-stopped
+    profiles: [app]
+    environment:
+      DOMAIN: ${DOMAIN:-}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      - dashboard
+
   postgres-backup:
     image: prodrigestivill/postgres-backup-local:17
     container_name: studio-os-backup
@@ -80,3 +122,4 @@ services:
 volumes:
   postgres_data:
   n8n_data:
+  caddy_data:

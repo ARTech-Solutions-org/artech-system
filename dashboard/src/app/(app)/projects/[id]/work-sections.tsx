@@ -1,5 +1,4 @@
-import { alias } from "drizzle-orm/pg-core";
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { closeRequest } from "@/app/actions/work";
 import { db } from "@/db";
 import { equipment, equipmentRequests, flags, installations, projects, users } from "@/db/schema";
@@ -8,20 +7,19 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { inUseQuantity } from "@/lib/equipment";
-import { FLAG_TYPE_LABELS, REQUEST_STATUS_LABELS } from "@/lib/format";
+import { REQUEST_STATUS_LABELS } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import {
   canAssign,
   canManageEquipment,
   canManageInstallation,
-  canRaiseFlag,
   canRequestEquipment,
-  canResolveFlag,
   canWorkOnProject,
-  DEPARTMENT_LABELS,
   type Viewer,
 } from "@/lib/permissions";
-import { GuideForm, RaiseFlagForm, RequestEquipmentForm, ResolveFlagForm, StatusButtons } from "../work-forms";
+import { flagPeople, loadFlags, visibleFlagsWhere } from "@/lib/flags";
+import { FlagCard, toPeople } from "../../flags/flag-card";
+import { GuideForm, RaiseFlagForm, RequestEquipmentForm, StatusButtons } from "../work-forms";
 import { Detail, EditSection, SmallAction } from "./project-ui";
 
 type Project = typeof projects.$inferSelect;
@@ -93,29 +91,10 @@ export async function InstallationActions({ me, project }: Omit<Props, "isMember
 
 export async function WorkSections({ me, project, isMember }: Props) {
   const { t, fmt, locale } = await getI18n();
-  const raiser = alias(users, "raiser");
-  const resolver = alias(users, "resolver");
 
-  const [flagRows, requests, items, [guide]] = await Promise.all([
-    db
-      .select({
-        id: flags.id,
-        type: flags.type,
-        details: flags.details,
-        ownerDepartment: flags.ownerDepartment,
-        status: flags.status,
-        raisedBy: flags.raisedBy,
-        raisedByName: raiser.name,
-        createdAt: flags.createdAt,
-        resolution: flags.resolution,
-        resolvedByName: resolver.name,
-        resolvedAt: flags.resolvedAt,
-      })
-      .from(flags)
-      .innerJoin(raiser, eq(raiser.id, flags.raisedBy))
-      .leftJoin(resolver, eq(resolver.id, flags.resolvedBy))
-      .where(eq(flags.projectId, project.id))
-      .orderBy(desc(flags.status), desc(flags.createdAt)),
+  const [flagRows, people, requests, items, [guide]] = await Promise.all([
+    loadFlags(and(eq(flags.projectId, project.id), visibleFlagsWhere(me))),
+    flagPeople(me),
     db
       .select({
         id: equipmentRequests.id,
@@ -152,7 +131,7 @@ export async function WorkSections({ me, project, isMember }: Props) {
   ]);
 
   const openFlags = flagRows.filter((f) => f.status === "open");
-  const closedFlags = flagRows.filter((f) => f.status === "resolved");
+  const closedFlags = flagRows.filter((f) => f.status !== "open");
   const canClose = (requestedBy: string) =>
     requestedBy === me.id || canAssign(me) || canManageInstallation(me) || canManageEquipment(me);
 
@@ -167,59 +146,26 @@ export async function WorkSections({ me, project, isMember }: Props) {
             )}
           </CardTitle>
           <CardDescription>
-            {t("Blockers and missing data. The department that needs to act sees them on its Flags page.")}
+            {t("Ask someone for what this project needs. Only the people involved see each flag.")}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {flagRows.length === 0 && <p className="text-sm text-muted-foreground">{t("No flags.")}</p>}
           {openFlags.map((f) => (
-            <div
-              key={f.id}
-              className="flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3"
-            >
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <Badge variant="destructive">{t(FLAG_TYPE_LABELS[f.type])}</Badge>
-                <span>
-                  {t("For {department} · raised by {name} on {date}", {
-                    department: t(DEPARTMENT_LABELS[f.ownerDepartment]),
-                    name: f.raisedByName,
-                    date: fmt.dateTime(f.createdAt),
-                  })}
-                </span>
-              </div>
-              <LinkedText text={f.details} />
-              {canResolveFlag(me, f) && <ResolveFlagForm flagId={f.id} />}
-            </div>
+            <FlagCard key={f.id} me={me} flag={f} showProject={false} />
           ))}
           {closedFlags.length > 0 && (
-            <EditSection label={t("Resolved ({count})", { count: closedFlags.length })}>
-              <ul className="flex flex-col gap-3">
+            <EditSection label={t("Closed ({count})", { count: closedFlags.length })}>
+              <div className="flex flex-col gap-3">
                 {closedFlags.map((f) => (
-                  <li key={f.id} className="text-sm">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="outline">{t(FLAG_TYPE_LABELS[f.type])}</Badge>
-                      <span className="text-muted-foreground">
-                        {f.raisedByName}, {fmt.dateTime(f.createdAt)}
-                      </span>
-                    </div>
-                    <p className="mt-1">{f.details}</p>
-                    <p className="text-muted-foreground">
-                      {t("Resolved by {name} on {date}: {resolution}", {
-                        name: f.resolvedByName ?? "—",
-                        date: fmt.dateTime(f.resolvedAt),
-                        resolution: f.resolution ?? "",
-                      })}
-                    </p>
-                  </li>
+                  <FlagCard key={f.id} me={me} flag={f} showProject={false} />
                 ))}
-              </ul>
+              </div>
             </EditSection>
           )}
-          {canRaiseFlag(me) && (
-            <EditSection label={t("Raise a flag")}>
-              <RaiseFlagForm projectId={project.id} />
-            </EditSection>
-          )}
+          <EditSection label={t("Send a flag")}>
+            <RaiseFlagForm projectId={project.id} people={toPeople(people)} />
+          </EditSection>
         </CardContent>
       </Card>
 

@@ -1,10 +1,10 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { equipment, equipmentRequests, flags, installations, projects, users } from "@/db/schema";
+import { equipment, equipmentRequests, flagRecipients, flags, installations, projects, users } from "@/db/schema";
 import { audit } from "@/lib/audit";
 import { requireUser } from "@/lib/auth/session";
 import { isUniqueViolation } from "@/lib/db-errors";
@@ -15,13 +15,12 @@ import {
   canAssign,
   canManageEquipment,
   canManageInstallation,
-  canRaiseFlag,
+  canCancelFlag,
   canRequestEquipment,
-  canResolveFlag,
+  canResolveFlagPart,
   canWorkOnProject,
-  DEPARTMENTS,
 } from "@/lib/permissions";
-import { notifyFlagRaised, notifyFlagResolved, notifyStatus } from "@/lib/notify";
+import { notifyFlagCancelled, notifyFlagRaised, notifyFlagResolved, notifyStatus } from "@/lib/notify";
 import { getProjectAccess } from "@/lib/projects";
 import { hasArabic, translate } from "@/lib/translate";
 import type { FormState } from "./auth";
@@ -178,58 +177,114 @@ export async function saveEquipment(_: FormState, formData: FormData): Promise<F
 // Flags
 
 const FlagSchema = z.object({
-  projectId: z.uuid("Invalid project."),
+  projectId: z
+    .union([z.literal(""), z.uuid("Invalid project.")])
+    .optional()
+    .transform((v) => v || null),
   type: z.enum(["blocked", "needs_data", "needs_assets", "other"], "Pick the flag type."),
-  ownerDepartment: z.enum(DEPARTMENTS, "Pick who needs to act."),
+  recipients: z.array(z.uuid()).min(1, "Pick at least one person to send the flag to."),
   details: z.string().trim().min(5, "Describe what is needed."),
 });
 
 export async function raiseFlag(_: FormState, formData: FormData): Promise<FormState> {
   const me = await requireUser();
-  const values = formValues(formData);
-  const parsed = FlagSchema.safeParse(values);
+  const picked = [...new Set(formData.getAll("recipients").map(String))].filter((id) => id !== me.id);
+  const values = { ...formValues(formData), recipients: picked.join(",") };
+  const parsed = FlagSchema.safeParse({ ...values, recipients: picked });
   if (!parsed.success) return { error: firstIssue(parsed.error), values };
+  const { recipients, ...flag } = parsed.data;
 
-  const access = await getProjectAccess(me, parsed.data.projectId);
-  if (!access || !canRaiseFlag(me)) return { error: "You cannot raise flags on this project.", values };
+  if (flag.projectId && !(await getProjectAccess(me, flag.projectId))) {
+    return { error: "You cannot raise flags on this project.", values };
+  }
+  const people = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(inArray(users.id, recipients), eq(users.status, "active")));
+  if (people.length !== recipients.length) return { error: "Pick at least one person to send the flag to.", values };
 
-  const [created] = await db
-    .insert(flags)
-    .values({ ...parsed.data, raisedBy: me.id })
-    .returning({ id: flags.id });
+  const created = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(flags)
+      .values({ ...flag, raisedBy: me.id })
+      .returning({ id: flags.id });
+    await tx.insert(flagRecipients).values(recipients.map((userId) => ({ flagId: row.id, userId })));
+    return row;
+  });
   await audit({ userId: me.id, action: "raise", entity: "flag", entityId: created.id, changes: parsed.data });
   notifyFlagRaised(created.id, me);
   refresh();
-  return { success: "Flag raised." };
+  return { success: "Flag sent." };
 }
 
+/** Resolves one recipient's part; the flag closes when every part is resolved. */
 export async function resolveFlag(_: FormState, formData: FormData): Promise<FormState> {
   const me = await requireUser();
   const id = z.uuid().safeParse(formData.get("id"));
+  const userId = z.uuid().safeParse(formData.get("userId"));
   const resolution = z.string().trim().min(2, "Say how it was resolved.").safeParse(formData.get("resolution"));
-  if (!id.success) return { error: "Invalid flag." };
+  if (!id.success || !userId.success) return { error: "Invalid flag." };
   if (!resolution.success) return { error: firstIssue(resolution.error) };
 
-  const [flag] = await db.select().from(flags).where(eq(flags.id, id.data));
-  if (!flag || flag.status !== "open") return { error: "This flag is already resolved." };
-  if (!(await getProjectAccess(me, flag.projectId)) || !canResolveFlag(me, flag)) {
+  const [part] = await db
+    .select({ status: flagRecipients.status, flagStatus: flags.status, department: users.department })
+    .from(flagRecipients)
+    .innerJoin(flags, eq(flags.id, flagRecipients.flagId))
+    .innerJoin(users, eq(users.id, flagRecipients.userId))
+    .where(and(eq(flagRecipients.flagId, id.data), eq(flagRecipients.userId, userId.data)));
+  if (!part || part.flagStatus !== "open" || part.status !== "open") return { error: "This flag is already resolved." };
+  if (!canResolveFlagPart(me, { id: userId.data, department: part.department })) {
     return { error: "You cannot resolve this flag." };
   }
 
-  await db
-    .update(flags)
-    .set({ status: "resolved", resolution: resolution.data, resolvedBy: me.id, resolvedAt: new Date() })
-    .where(eq(flags.id, id.data));
+  const allDone = await db.transaction(async (tx) => {
+    const now = new Date();
+    await tx
+      .update(flagRecipients)
+      .set({ status: "resolved", resolution: resolution.data, resolvedBy: me.id, resolvedAt: now })
+      .where(and(eq(flagRecipients.flagId, id.data), eq(flagRecipients.userId, userId.data)));
+    const open = await tx.$count(
+      flagRecipients,
+      and(eq(flagRecipients.flagId, id.data), eq(flagRecipients.status, "open")),
+    );
+    if (open === 0) {
+      await tx
+        .update(flags)
+        .set({ status: "resolved", resolvedBy: me.id, resolvedAt: now })
+        .where(eq(flags.id, id.data));
+    }
+    return open === 0;
+  });
   await audit({
     userId: me.id,
     action: "resolve",
     entity: "flag",
     entityId: id.data,
-    changes: { resolution: resolution.data },
+    changes: { recipient: userId.data, resolution: resolution.data, flagClosed: allDone },
   });
-  notifyFlagResolved(id.data, me);
+  notifyFlagResolved(id.data, userId.data, me, allDone);
   refresh();
-  return { success: "Flag resolved." };
+  return { success: allDone ? "Resolved. Every part is done, so the flag is closed." : "Your part is resolved." };
+}
+
+export async function cancelFlag(_: FormState, formData: FormData): Promise<FormState> {
+  const me = await requireUser();
+  const id = z.uuid().safeParse(formData.get("id"));
+  if (!id.success) return { error: "Invalid flag." };
+  const reason = String(formData.get("reason") ?? "").trim() || null;
+
+  const [flag] = await db.select().from(flags).where(eq(flags.id, id.data));
+  if (!flag || flag.status !== "open") return { error: "This flag is already closed." };
+  if (!canCancelFlag(me, flag)) return { error: "Only the person who sent this flag can cancel it." };
+
+  await db
+    .update(flags)
+    .set({ status: "cancelled", resolution: reason, resolvedBy: me.id, resolvedAt: new Date() })
+    .where(eq(flags.id, id.data));
+  await audit({ userId: me.id, action: "cancel", entity: "flag", entityId: id.data, changes: { reason } });
+  notifyFlagCancelled(id.data, me);
+  refresh();
+  return { success: "Flag cancelled." };
 }
 
 // Installation guide (developers)

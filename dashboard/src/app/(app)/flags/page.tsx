@@ -1,55 +1,64 @@
-import { alias } from "drizzle-orm/pg-core";
-import { asc, eq } from "drizzle-orm";
-import Link from "next/link";
-import { db } from "@/db";
-import { flags, projects, users } from "@/db/schema";
-import { LinkedText } from "@/components/linked-text";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { and, eq, gte, ne, sql } from "drizzle-orm";
+import { flags } from "@/db/schema";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/session";
-import { myOpenFlagsWhere } from "@/lib/flags";
-import { FLAG_TYPE_LABELS } from "@/lib/format";
+import { flagPeople, flagProjects, loadFlags, visibleFlagsWhere } from "@/lib/flags";
 import { getI18n } from "@/lib/i18n/server";
-import { canResolveFlag, DEPARTMENT_LABELS } from "@/lib/permissions";
-import { ResolveFlagForm } from "../projects/work-forms";
+import { RaiseFlagForm } from "../projects/work-forms";
+import { FlagCard, myOpenParts, toPeople } from "./flag-card";
 
 export default async function FlagsPage() {
   const me = await requireUser();
-  const { t, fmt } = await getI18n();
-  const raiser = alias(users, "raiser");
+  const { t } = await getI18n();
+  const [open, closed, people, projects] = await Promise.all([
+    loadFlags(and(eq(flags.status, "open"), visibleFlagsWhere(me))),
+    loadFlags(
+      and(ne(flags.status, "open"), gte(flags.resolvedAt, sql`now() - interval '30 days'`), visibleFlagsWhere(me)),
+    ),
+    flagPeople(me),
+    flagProjects(me),
+  ]);
 
-  const rows = await db
-    .select({
-      id: flags.id,
-      type: flags.type,
-      details: flags.details,
-      ownerDepartment: flags.ownerDepartment,
-      raisedBy: flags.raisedBy,
-      raisedByName: raiser.name,
-      createdAt: flags.createdAt,
-      projectId: projects.id,
-      projectName: projects.name,
-    })
-    .from(flags)
-    .innerJoin(projects, eq(projects.id, flags.projectId))
-    .innerJoin(raiser, eq(raiser.id, flags.raisedBy))
-    .where(myOpenFlagsWhere(me))
-    .orderBy(asc(flags.createdAt));
+  const waitingOnMe = open.filter((f) => myOpenParts(me, f).length > 0);
+  const sentByMe = open.filter((f) => !waitingOnMe.includes(f) && f.raisedBy === me.id);
+  const others = open.filter((f) => !waitingOnMe.includes(f) && !sentByMe.includes(f));
+
+  const section = (title: string, description: string, list: typeof open) =>
+    list.length > 0 && (
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {title} ({list.length})
+          </CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {list.map((f) => (
+            <FlagCard key={f.id} me={me} flag={f} />
+          ))}
+        </CardContent>
+      </Card>
+    );
 
   return (
     <div className="flex max-w-4xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">{t("Open flags")}</h1>
+        <h1 className="text-2xl font-semibold">{t("Flags")}</h1>
         <p className="text-muted-foreground">
-          {me.isSuperAdmin || !me.department
-            ? t("Every open flag.")
-            : t("Flags waiting on {department}, and flags you raised.", {
-                department: t(DEPARTMENT_LABELS[me.department]),
-              })}
+          {t("Ask anyone on the team for something you need. They and their head get an email.")}
         </p>
       </div>
 
-      {rows.length === 0 && (
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("Send a flag")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RaiseFlagForm projects={projects} people={toPeople(people)} />
+        </CardContent>
+      </Card>
+
+      {open.length === 0 && (
         <Card>
           <CardContent>
             <p className="py-6 text-center text-muted-foreground">{t("Nothing open.")}</p>
@@ -57,27 +66,26 @@ export default async function FlagsPage() {
         </Card>
       )}
 
-      {rows.map((f) => (
-        <Card key={f.id}>
-          <CardContent className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <Badge variant="destructive">{t(FLAG_TYPE_LABELS[f.type])}</Badge>
-              <Link href={`/projects/${f.projectId}`} className="font-medium underline-offset-4 hover:underline">
-                {f.projectName}
-              </Link>
-              <span className="text-muted-foreground">
-                {t("For {department} · raised by {name} on {date}", {
-                  department: t(DEPARTMENT_LABELS[f.ownerDepartment]),
-                  name: f.raisedByName,
-                  date: fmt.dateTime(f.createdAt),
-                })}
-              </span>
-            </div>
-            <LinkedText text={f.details} />
-            {canResolveFlag(me, f) && <ResolveFlagForm flagId={f.id} />}
-          </CardContent>
-        </Card>
-      ))}
+      {section(
+        t("Waiting on you"),
+        me.isHead ? t("Flags sent to you or to your team.") : t("Flags sent to you."),
+        waitingOnMe,
+      )}
+      {section(t("Sent by you"), t("Waiting on others. You can cancel a flag you no longer need."), sentByMe)}
+      {section(t("Other open flags"), t("Flags you can follow but don't need to act on."), others)}
+
+      {closed.length > 0 && (
+        <details className="rounded-xl border p-4">
+          <summary className="cursor-pointer font-medium">
+            {t("Closed in the last 30 days ({count})", { count: closed.length })}
+          </summary>
+          <div className="mt-3 flex flex-col gap-3">
+            {closed.map((f) => (
+              <FlagCard key={f.id} me={me} flag={f} />
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }

@@ -2,10 +2,9 @@ import "server-only";
 import { and, eq, inArray, or, type SQL } from "drizzle-orm";
 import { after } from "next/server";
 import { db } from "@/db";
-import { flags, installations, projectMembers, projects, projectSchedule, users } from "@/db/schema";
+import { flagRecipients, flags, installations, projectMembers, projects, projectSchedule, users } from "@/db/schema";
 import { FLAG_TYPE_LABELS } from "@/lib/format";
 import { type OutgoingEmail, type Recipient, sendEmails } from "@/lib/mail";
-import { DEPARTMENT_LABELS } from "@/lib/permissions";
 
 const recipientColumns = { id: users.id, name: users.name, email: users.email, locale: users.locale };
 
@@ -155,56 +154,145 @@ async function flagInfo(flagId: string) {
       projectName: projects.name,
       type: flags.type,
       details: flags.details,
-      ownerDepartment: flags.ownerDepartment,
       raisedBy: flags.raisedBy,
-      resolution: flags.resolution,
+      cancelReason: flags.resolution,
     })
     .from(flags)
-    .innerJoin(projects, eq(projects.id, flags.projectId))
+    .leftJoin(projects, eq(projects.id, flags.projectId))
     .where(eq(flags.id, flagId));
-  return f;
+  const parts = await db
+    .select({
+      userId: users.id,
+      name: users.name,
+      department: users.department,
+      status: flagRecipients.status,
+      resolution: flagRecipients.resolution,
+    })
+    .from(flagRecipients)
+    .innerJoin(users, eq(users.id, flagRecipients.userId))
+    .where(eq(flagRecipients.flagId, flagId));
+  return { ...f, parts };
 }
+
+type FlagInfo = Awaited<ReturnType<typeof flagInfo>>;
+type T = Parameters<OutgoingEmail["content"]>[0];
+
+const FLAGS_LINK = (t: T) => ({ label: t("Open flags"), path: "/flags" });
+const flagTitle = (t: T, f: FlagInfo) =>
+  f.projectName
+    ? t("{type} on {project}", { type: t(FLAG_TYPE_LABELS[f.type]), project: f.projectName })
+    : t(FLAG_TYPE_LABELS[f.type]);
+
+/** Active heads of the recipients' departments, without `exceptId`. */
+async function headsOf(parts: FlagInfo["parts"], exceptId: string) {
+  const departments = [...new Set(parts.map((p) => p.department).filter((d) => d !== null))];
+  if (!departments.length) return [];
+  return recipients(and(eq(users.isHead, true), inArray(users.department, departments)), exceptId);
+}
+
+const unique = (list: Recipient[]) => [...new Map(list.map((r) => [r.id, r])).values()];
 
 export function notifyFlagRaised(flagId: string, by: { id: string; name: string }) {
   later(async () => {
     const f = await flagInfo(flagId);
-    // Developers only see their own projects, so a flag for Development goes to the Tech Head and the project team.
-    const list =
-      f.ownerDepartment === "development"
-        ? [...(await recipients(techHeads(), by.id)), ...(await projectDevelopers(f.projectId, by.id))]
-        : await recipients(eq(users.department, f.ownerDepartment), by.id);
-    const unique = [...new Map(list.map((r) => [r.id, r])).values()];
-    return unique.map((recipient) => ({
-      event: "flag_raised",
+    const ids = new Set(f.parts.map((p) => p.userId));
+    const direct = await recipients(inArray(users.id, [...ids]), by.id);
+    const heads = (await headsOf(f.parts, by.id)).filter((h) => !h.id || !ids.has(h.id));
+    const names = f.parts.map((p) => p.name).join(", ");
+    return [
+      ...direct.map((recipient): OutgoingEmail => ({
+        event: "flag_raised",
+        recipient,
+        projectId: f.projectId ?? undefined,
+        content: (t) => ({
+          subject: t("{by} sent you a flag: {title}", { by: by.name, title: flagTitle(t, f) }),
+          lines: [
+            t("{by} needs something from you:", { by: by.name }),
+            f.details,
+            ...(f.parts.length > 1 ? [t("Also sent to: {names}", { names })] : []),
+            t("Resolve your part on the Flags page once it's done."),
+          ],
+          link: FLAGS_LINK(t),
+        }),
+      })),
+      ...unique(heads).map((recipient): OutgoingEmail => ({
+        event: "flag_raised_head",
+        recipient,
+        projectId: f.projectId ?? undefined,
+        content: (t) => ({
+          subject: t("Flag for your team: {title}", { title: flagTitle(t, f) }),
+          lines: [t("{by} sent a flag to {names}:", { by: by.name, names }), f.details],
+          link: FLAGS_LINK(t),
+        }),
+      })),
+    ];
+  });
+}
+
+export function notifyFlagResolved(
+  flagId: string,
+  partUserId: string,
+  by: { id: string; name: string },
+  allDone: boolean,
+) {
+  later(async () => {
+    const f = await flagInfo(flagId);
+    const part = f.parts.find((p) => p.userId === partUserId);
+    if (!part) return [];
+    const done = f.parts.filter((p) => p.status === "resolved").length;
+    const list = await recipients(inArray(users.id, [f.raisedBy, partUserId]), by.id);
+    return list.map((recipient): OutgoingEmail => ({
+      event: allDone ? "flag_resolved" : "flag_part_resolved",
       recipient,
-      projectId: f.projectId,
+      projectId: f.projectId ?? undefined,
       content: (t) => ({
-        subject: t("New flag on {project}: {type}", { project: f.projectName, type: t(FLAG_TYPE_LABELS[f.type]) }),
+        subject: allDone
+          ? t("Flag resolved: {title}", { title: flagTitle(t, f) })
+          : t("{name} resolved their part: {title}", { name: part.name, title: flagTitle(t, f) }),
         lines: [
-          t("{by} raised a flag for {department}:", {
-            by: by.name,
-            department: t(DEPARTMENT_LABELS[f.ownerDepartment]),
-          }),
+          by.id === partUserId
+            ? t("{by} resolved their part:", { by: by.name })
+            : t("{by} resolved {name}'s part:", { by: by.name, name: part.name }),
+          part.resolution ?? "",
+          allDone
+            ? t("Every part is done, so the flag is closed.")
+            : t("{done} of {total} part(s) done.", { done, total: f.parts.length }),
+          t("The flag:"),
           f.details,
         ],
-        link: { label: t("Open project"), path: projectPath(f.projectId) },
+        link: FLAGS_LINK(t),
       }),
     }));
   });
 }
 
-export function notifyFlagResolved(flagId: string, by: { id: string; name: string }) {
+export function notifyFlagCancelled(flagId: string, by: { id: string; name: string }) {
   later(async () => {
     const f = await flagInfo(flagId);
-    const list = await recipients(eq(users.id, f.raisedBy), by.id);
-    return list.map((recipient) => ({
-      event: "flag_resolved",
+    const open = f.parts.filter((p) => p.status === "open");
+    const list = unique([
+      ...(await recipients(
+        inArray(
+          users.id,
+          open.map((p) => p.userId),
+        ),
+        by.id,
+      )),
+      ...(await headsOf(open, by.id)),
+    ]);
+    return list.map((recipient): OutgoingEmail => ({
+      event: "flag_cancelled",
       recipient,
-      projectId: f.projectId,
+      projectId: f.projectId ?? undefined,
       content: (t) => ({
-        subject: t("Your flag on {project} was resolved", { project: f.projectName }),
-        lines: [t("{by} resolved it:", { by: by.name }), f.resolution ?? "", t("Your flag:"), f.details],
-        link: { label: t("Open project"), path: projectPath(f.projectId) },
+        subject: t("Flag cancelled: {title}", { title: flagTitle(t, f) }),
+        lines: [
+          t("{by} cancelled this flag. No action is needed.", { by: by.name }),
+          ...(f.cancelReason ? [t("Reason: {reason}", { reason: f.cancelReason })] : []),
+          t("The flag:"),
+          f.details,
+        ],
+        link: FLAGS_LINK(t),
       }),
     }));
   });

@@ -127,15 +127,18 @@ export function canManageEquipment(v: Viewer): boolean {
 }
 
 /** The department that must act, the person who raised it, the Tech Head, or the super admin. */
-export function canResolveFlag(v: Viewer, flag: { ownerDepartment: Department; raisedBy: string }): boolean {
-  return v.isSuperAdmin || isTechHead(v) || v.department === flag.ownerDepartment || v.id === flag.raisedBy;
+/** A recipient resolves their own part of a flag; their department head can resolve it for them. */
+export function canResolveFlagPart(v: Viewer, recipient: { id: string; department: Department | null }): boolean {
+  return (
+    v.isSuperAdmin || v.id === recipient.id || (v.isHead && !!v.department && v.department === recipient.department)
+  );
+}
+
+export function canCancelFlag(v: Viewer, flag: { raisedBy: string }): boolean {
+  return v.isSuperAdmin || v.id === flag.raisedBy;
 }
 
 export function canRequestEquipment(v: Viewer): boolean {
-  return v.isSuperAdmin || v.department === "development" || v.department === "operations";
-}
-
-export function canRaiseFlag(v: Viewer): boolean {
   return v.isSuperAdmin || v.department === "development" || v.department === "operations";
 }
 

@@ -41,7 +41,7 @@ export const milestoneStatus = pgEnum("milestone_status", ["pending", "done"]);
 
 export const flagType = pgEnum("flag_type", ["blocked", "needs_data", "needs_assets", "other"]);
 
-export const flagStatus = pgEnum("flag_status", ["open", "resolved"]);
+export const flagStatus = pgEnum("flag_status", ["open", "resolved", "cancelled"]);
 
 export const equipmentStatus = pgEnum("equipment_status", ["active", "maintenance", "broken", "retired"]);
 
@@ -228,22 +228,42 @@ export const flags = pgTable(
   "flags",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    projectId: uuid("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
+    // Optional: a flag can also be a general request between people.
+    projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
     type: flagType("type").notNull(),
     details: text("details").notNull(),
-    ownerDepartment: department("owner_department").notNull(),
+    // Only set on flags raised before flags were sent to people.
+    ownerDepartment: department("owner_department"),
+    // Resolved once every recipient has resolved their part; cancelled by the sender.
     status: flagStatus("status").notNull().default("open"),
     raisedBy: uuid("raised_by")
       .notNull()
       .references(() => users.id),
+    // Set when the flag is cancelled (optional reason).
     resolution: text("resolution"),
     resolvedBy: uuid("resolved_by").references(() => users.id),
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
     ...timestamps,
   },
-  (t) => [index("flags_project_idx").on(t.projectId), index("flags_open_idx").on(t.status, t.ownerDepartment)],
+  (t) => [index("flags_project_idx").on(t.projectId), index("flags_status_idx").on(t.status)],
+);
+
+/** One row per person a flag was sent to; each resolves their own part. */
+export const flagRecipients = pgTable(
+  "flag_recipients",
+  {
+    flagId: uuid("flag_id")
+      .notNull()
+      .references(() => flags.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    status: flagStatus("status").notNull().default("open"),
+    resolution: text("resolution"),
+    resolvedBy: uuid("resolved_by").references(() => users.id),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (t) => [primaryKey({ columns: [t.flagId, t.userId] }), index("flag_recipients_user_idx").on(t.userId, t.status)],
 );
 
 // Free units are computed as quantity minus approved requests, not stored.

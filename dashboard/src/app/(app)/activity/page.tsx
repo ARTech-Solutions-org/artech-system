@@ -36,6 +36,7 @@ const ACTION_LABELS: Record<string, Msg> = {
   "milestone.delete": "Deleted milestone",
   "flag.raise": "Raised flag",
   "flag.resolve": "Resolved flag",
+  "flag.cancel": "Cancelled flag",
   "equipment.create": "Added equipment",
   "equipment.update": "Edited equipment",
   "equipment_request.equipment_approved": "Equipment approved",

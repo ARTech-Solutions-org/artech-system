@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  cancelFlag,
   moveStatus,
   raiseFlag,
   requestEquipment,
@@ -15,13 +16,12 @@ import { useRef, useState, useTransition } from "react";
 import { Field, SelectField, Submit, useForm, type Values } from "@/components/form-fields";
 import { FormMessage } from "@/components/form-message";
 import { useI18n } from "@/components/i18n-provider";
+import { type Person, PeoplePicker } from "@/components/people-picker";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EQUIPMENT_STATUS_LABELS, FLAG_TYPE_LABELS } from "@/lib/format";
 import type { Locale, Msg } from "@/lib/i18n";
-import { DEPARTMENT_LABELS, DEPARTMENTS } from "@/lib/permissions";
-
 export function RequestEquipmentForm({
   projectId,
   items,
@@ -60,24 +60,48 @@ export function RequestEquipmentForm({
   );
 }
 
-export function RaiseFlagForm({ projectId }: { projectId: string }) {
+/** `projectId` fixes the project (project page); otherwise `projects` offers an optional project to attach. */
+export function RaiseFlagForm({
+  projectId,
+  projects,
+  people,
+}: {
+  projectId?: string;
+  projects?: { id: string; name: string }[];
+  people: Person[];
+}) {
   const { t } = useI18n();
-  const f = useForm(raiseFlag, { type: "needs_data", ownerDepartment: "business" });
+  const f = useForm(raiseFlag, { type: "needs_data" });
   return (
     <form key={f.key} action={f.formAction} className="grid gap-4 sm:grid-cols-2">
-      <input type="hidden" name="projectId" value={projectId} />
+      {projectId ? (
+        <input type="hidden" name="projectId" value={projectId} />
+      ) : (
+        <SelectField
+          label={t("Project (optional)")}
+          name="projectId"
+          values={f.values}
+          defaultValue=""
+          options={[
+            { value: "", label: t("No project: general request") },
+            ...(projects ?? []).map((p) => ({ value: p.id, label: p.name })),
+          ]}
+        />
+      )}
       <SelectField
         label={t("Type")}
         name="type"
         values={f.values}
         options={Object.entries(FLAG_TYPE_LABELS).map(([value, label]) => ({ value, label: t(label) }))}
       />
-      <SelectField
-        label={t("Who needs to act")}
-        name="ownerDepartment"
-        values={f.values}
-        options={DEPARTMENTS.map((d) => ({ value: d, label: t(DEPARTMENT_LABELS[d]) }))}
-      />
+      <div className="sm:col-span-2">
+        <PeoplePicker
+          label={t("Send to")}
+          name="recipients"
+          people={people}
+          initial={f.values.recipients?.split(",").filter(Boolean)}
+        />
+      </div>
       <Field
         label={t("What is needed")}
         name="details"
@@ -89,20 +113,22 @@ export function RaiseFlagForm({ projectId }: { projectId: string }) {
       />
       <div className="flex flex-col gap-2 sm:col-span-2">
         <FormMessage state={f.state} />
-        <Submit pending={f.pending} label={t("Raise flag")} pendingLabel={t("Raising…")} variant="destructive" />
+        <Submit pending={f.pending} label={t("Send flag")} pendingLabel={t("Sending…")} variant="destructive" />
       </div>
     </form>
   );
 }
 
-export function ResolveFlagForm({ flagId }: { flagId: string }) {
+/** Resolves one recipient's part. `label` names whose part when a head resolves it for someone else. */
+export function ResolveFlagForm({ flagId, userId, label }: { flagId: string; userId: string; label: string }) {
   const { t } = useI18n();
   const f = useForm(resolveFlag);
   return (
     <form key={f.key} action={f.formAction} className="flex flex-wrap items-end gap-2">
       <input type="hidden" name="id" value={flagId} />
+      <input type="hidden" name="userId" value={userId} />
       <Field
-        label={t("Resolution")}
+        label={label}
         name="resolution"
         values={f.values}
         required
@@ -110,6 +136,27 @@ export function ResolveFlagForm({ flagId }: { flagId: string }) {
         className="min-w-56 flex-1"
       />
       <Submit pending={f.pending} label={t("Resolve")} pendingLabel={t("Saving…")} variant="outline" />
+      <div className="basis-full">
+        <FormMessage state={f.state} />
+      </div>
+    </form>
+  );
+}
+
+export function CancelFlagForm({ flagId }: { flagId: string }) {
+  const { t } = useI18n();
+  const f = useForm(cancelFlag);
+  return (
+    <form key={f.key} action={f.formAction} className="flex flex-wrap items-end gap-2">
+      <input type="hidden" name="id" value={flagId} />
+      <Field
+        label={t("Reason (optional)")}
+        name="reason"
+        values={f.values}
+        placeholder={t("e.g. Not needed anymore")}
+        className="min-w-56 flex-1"
+      />
+      <Submit pending={f.pending} label={t("Cancel flag")} pendingLabel={t("Saving…")} variant="outline" />
       <div className="basis-full">
         <FormMessage state={f.state} />
       </div>

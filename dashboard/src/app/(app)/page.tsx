@@ -25,6 +25,7 @@ import {
   canWriteInstallationGuide,
   roleTitle,
 } from "@/lib/permissions";
+import { Overview } from "./overview";
 
 type Check = { name: string; ok: boolean; detail: string };
 
@@ -86,9 +87,7 @@ export default async function Home() {
       .orderBy(asc(projects.devDeadline)),
     operate
       ? listInstallations().then((rows) =>
-          rows
-            .filter((r) => r.installationDate && !["installed", "completed"].includes(r.status))
-            .slice(0, 6),
+          rows.filter((r) => r.installationDate && !["installed", "completed"].includes(r.status)).slice(0, 6),
         )
       : Promise.resolve([]),
   ]);
@@ -99,6 +98,8 @@ export default async function Home() {
         <h1 className="text-2xl font-semibold">{t("Welcome, {name}", { name: me.name })}</h1>
         <p className="text-muted-foreground">{t(roleTitle(me))}</p>
       </div>
+
+      {canSeeAllProjects(me) && <Overview />}
 
       {upcoming.length > 0 && (
         <Card>

@@ -31,6 +31,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     { href: "/equipment", label: "Equipment", show: ready && (canRequestEquipment(me) || canManageEquipment(me)) },
     { href: "/finance", label: "Finance", show: ready && canViewBudget(me) },
     { href: "/users", label: "Users", show: ready && canManageAnyUsers(me) },
+    { href: "/activity", label: "Activity", show: ready && me.isSuperAdmin },
+    { href: "/automations", label: "Automations", show: ready && me.isSuperAdmin },
     { href: "/account", label: "Account", show: true },
   ];
 

@@ -29,6 +29,13 @@
       "when": 1791188194630,
       "tag": "0003_brief_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791190530431,
+      "tag": "0004_installation_steps_ar",
+      "breakpoints": true
     }
   ]
 }

@@ -10,7 +10,7 @@ import { requireUser } from "@/lib/auth/session";
 import { isUniqueViolation } from "@/lib/db-errors";
 import { closeEquipmentRequest, createEquipmentRequest, refreshWaitlist } from "@/lib/equipment";
 import type { ProjectStatus } from "@/lib/format";
-import { firstIssue } from "@/lib/i18n";
+import { firstIssue, isLocale, type Locale, type Msg } from "@/lib/i18n";
 import {
   canAssign,
   canManageEquipment,
@@ -22,6 +22,7 @@ import {
   DEPARTMENTS,
 } from "@/lib/permissions";
 import { getProjectAccess } from "@/lib/projects";
+import { hasArabic, translate } from "@/lib/translate";
 import type { FormState } from "./auth";
 
 const optionalText = z
@@ -79,9 +80,13 @@ export async function requestEquipment(_: FormState, formData: FormData): Promis
   });
   refresh();
   return result.status === "approved"
-    ? { success: "Approved: {qty} × {item} reserved for this project.", vars: { qty: parsed.data.quantity, item: result.itemName } }
+    ? {
+        success: "Approved: {qty} × {item} reserved for this project.",
+        vars: { qty: parsed.data.quantity, item: result.itemName },
+      }
     : {
-        success: "Waitlisted: only {free} {item} free right now. It will be approved automatically when units come back.",
+        success:
+          "Waitlisted: only {free} {item} free right now. It will be approved automatically when units come back.",
         vars: { free: Math.max(result.free, 0), item: result.itemName },
       };
 }
@@ -93,8 +98,7 @@ export async function closeRequest(formData: FormData) {
 
   const [request] = await db.select().from(equipmentRequests).where(eq(equipmentRequests.id, id));
   if (!request) throw new Error("Request not found.");
-  const allowed =
-    request.requestedBy === me.id || canAssign(me) || canManageInstallation(me) || canManageEquipment(me);
+  const allowed = request.requestedBy === me.id || canAssign(me) || canManageInstallation(me) || canManageEquipment(me);
   if (!allowed) throw new Error("You cannot change this request.");
 
   const result = await closeEquipmentRequest(id, outcome);
@@ -125,9 +129,13 @@ const EquipmentSchema = z.object({
 export async function saveEquipment(_: FormState, formData: FormData): Promise<FormState> {
   const me = await requireUser();
   const values = formValues(formData);
-  if (!canManageEquipment(me)) return { error: "Only the Tech Head or Operations Manager can manage equipment.", values };
+  if (!canManageEquipment(me))
+    return { error: "Only the Tech Head or Operations Manager can manage equipment.", values };
 
-  const id = z.union([z.literal(""), z.uuid()]).optional().safeParse(values.id ?? "");
+  const id = z
+    .union([z.literal(""), z.uuid()])
+    .optional()
+    .safeParse(values.id ?? "");
   const parsed = EquipmentSchema.safeParse(values);
   if (!id.success) return { error: "Invalid equipment.", values };
   if (!parsed.success) return { error: firstIssue(parsed.error), values };
@@ -210,7 +218,13 @@ export async function resolveFlag(_: FormState, formData: FormData): Promise<For
     .update(flags)
     .set({ status: "resolved", resolution: resolution.data, resolvedBy: me.id, resolvedAt: new Date() })
     .where(eq(flags.id, id.data));
-  await audit({ userId: me.id, action: "resolve", entity: "flag", entityId: id.data, changes: { resolution: resolution.data } });
+  await audit({
+    userId: me.id,
+    action: "resolve",
+    entity: "flag",
+    entityId: id.data,
+    changes: { resolution: resolution.data },
+  });
   refresh();
   return { success: "Flag resolved." };
 }
@@ -220,8 +234,23 @@ export async function resolveFlag(_: FormState, formData: FormData): Promise<For
 const GuideSchema = z.object({
   projectId: z.uuid("Invalid project."),
   steps: optionalText,
+  stepsAr: optionalText,
   demoVideoUrl: optionalUrl,
 });
+
+export async function translateText(
+  text: string,
+  to: Locale,
+): Promise<{ text: string; error?: undefined } | { error: Msg; text?: undefined }> {
+  await requireUser();
+  const source = z.string().trim().min(1).max(5000).safeParse(text);
+  if (!source.success || !isLocale(to)) return { error: "Write something to translate first." };
+  try {
+    return { text: await translate(source.data, to) };
+  } catch {
+    return { error: "Translation is not available right now. Try again or write it yourself." };
+  }
+}
 
 export async function saveGuide(_: FormState, formData: FormData): Promise<FormState> {
   const me = await requireUser();
@@ -234,14 +263,37 @@ export async function saveGuide(_: FormState, formData: FormData): Promise<FormS
     return { error: "Only developers on this project can edit the guide.", values };
   }
 
-  const row = { steps: parsed.data.steps, demoVideoUrl: parsed.data.demoVideoUrl, updatedBy: me.id };
+  let { steps, stepsAr } = parsed.data;
+  if (steps && !stepsAr && hasArabic(steps)) [steps, stepsAr] = [null, steps];
+  if (stepsAr && !steps && !hasArabic(stepsAr)) [steps, stepsAr] = [stepsAr, null];
+  let translationFailed = false;
+  try {
+    if (steps && !stepsAr) stepsAr = await translate(steps, "ar");
+    else if (stepsAr && !steps) steps = await translate(stepsAr, "en");
+  } catch {
+    translationFailed = true;
+  }
+
+  const row = { steps, stepsAr, demoVideoUrl: parsed.data.demoVideoUrl, updatedBy: me.id };
   await db
     .insert(installations)
     .values({ projectId: parsed.data.projectId, ...row })
     .onConflictDoUpdate({ target: installations.projectId, set: row });
-  await audit({ userId: me.id, action: "update_guide", entity: "project", entityId: parsed.data.projectId, changes: row });
+  await audit({
+    userId: me.id,
+    action: "update_guide",
+    entity: "project",
+    entityId: parsed.data.projectId,
+    changes: row,
+  });
   refresh();
-  return { success: "Installation guide saved.", values };
+  const saved = { ...values, steps: steps ?? "", stepsAr: stepsAr ?? "" };
+  return translationFailed
+    ? {
+        success: "Guide saved, but the auto-translation failed. Use the Translate button or write both languages.",
+        values: saved,
+      }
+    : { success: "Installation guide saved.", values: saved };
 }
 
 // Installation team and report (Operations)
@@ -269,11 +321,7 @@ export async function saveInstallation(_: FormState, formData: FormData): Promis
       .select({ id: users.id })
       .from(users)
       .where(
-        and(
-          eq(users.id, parsed.data.leadTechnicianId),
-          eq(users.department, "operations"),
-          eq(users.status, "active"),
-        ),
+        and(eq(users.id, parsed.data.leadTechnicianId), eq(users.department, "operations"), eq(users.status, "active")),
       );
     if (!tech) return { error: "Pick an active member of Operations.", values };
   }
@@ -283,7 +331,13 @@ export async function saveInstallation(_: FormState, formData: FormData): Promis
     .insert(installations)
     .values({ projectId: parsed.data.projectId, ...row })
     .onConflictDoUpdate({ target: installations.projectId, set: row });
-  await audit({ userId: me.id, action: "update_installation", entity: "project", entityId: parsed.data.projectId, changes: row });
+  await audit({
+    userId: me.id,
+    action: "update_installation",
+    entity: "project",
+    entityId: parsed.data.projectId,
+    changes: row,
+  });
   refresh();
   return { success: "Installation details saved.", values };
 }
@@ -325,7 +379,7 @@ export async function moveStatus(_: FormState, formData: FormData): Promise<Form
 
   if (to.data === "ready_for_installation" && from === "internal_review") {
     const [guide] = await db.select().from(installations).where(eq(installations.projectId, id.data));
-    if (!guide?.steps || !guide.demoVideoUrl) {
+    if (!(guide?.steps || guide?.stepsAr) || !guide.demoVideoUrl) {
       return { error: "Add the installation steps and the demo video link first." };
     }
   }
@@ -348,7 +402,13 @@ export async function moveStatus(_: FormState, formData: FormData): Promise<Form
         .onConflictDoUpdate({ target: installations.projectId, set: { ...install, updatedBy: me.id } });
     }
   });
-  await audit({ userId: me.id, action: "status", entity: "project", entityId: id.data, changes: { from, to: to.data } });
+  await audit({
+    userId: me.id,
+    action: "status",
+    entity: "project",
+    entityId: id.data,
+    changes: { from, to: to.data },
+  });
   refresh();
   return { success: "Status updated." };
 }

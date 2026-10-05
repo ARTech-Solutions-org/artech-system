@@ -3,7 +3,7 @@ import { asc, desc, eq } from "drizzle-orm";
 import { closeRequest } from "@/app/actions/work";
 import { db } from "@/db";
 import { equipment, equipmentRequests, flags, installations, projects, users } from "@/db/schema";
-import { LinkedText } from "@/components/linked-text";
+import { BilingualText, LinkedText } from "@/components/linked-text";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -92,7 +92,7 @@ export async function InstallationActions({ me, project }: Omit<Props, "isMember
 }
 
 export async function WorkSections({ me, project, isMember }: Props) {
-  const { t, fmt } = await getI18n();
+  const { t, fmt, locale } = await getI18n();
   const raiser = alias(users, "raiser");
   const resolver = alias(users, "resolver");
 
@@ -173,7 +173,10 @@ export async function WorkSections({ me, project, isMember }: Props) {
         <CardContent className="flex flex-col gap-4">
           {flagRows.length === 0 && <p className="text-sm text-muted-foreground">{t("No flags.")}</p>}
           {openFlags.map((f) => (
-            <div key={f.id} className="flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+            <div
+              key={f.id}
+              className="flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3"
+            >
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <Badge variant="destructive">{t(FLAG_TYPE_LABELS[f.type])}</Badge>
                 <span>
@@ -274,7 +277,11 @@ export async function WorkSections({ me, project, isMember }: Props) {
                           />
                         )}
                         {canClose(r.requestedBy) && (r.status === "approved" || r.status === "waitlisted") && (
-                          <SmallAction action={closeRequest} fields={{ id: r.id, outcome: "cancelled" }} label={t("Cancel")} />
+                          <SmallAction
+                            action={closeRequest}
+                            fields={{ id: r.id, outcome: "cancelled" }}
+                            label={t("Cancel")}
+                          />
                         )}
                       </span>
                     </TableCell>
@@ -305,17 +312,26 @@ export async function WorkSections({ me, project, isMember }: Props) {
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
           <Detail label={t("Steps")}>
-            <LinkedText text={guide?.steps} empty={t("Not written yet.")} />
+            <BilingualText
+              en={guide?.steps}
+              ar={guide?.stepsAr}
+              locale={locale}
+              empty={t("Not written yet.")}
+              showOther={locale === "ar" ? t("Show in English") : t("Show in Arabic")}
+            />
           </Detail>
           <Detail label={t("Demo video")}>
             <LinkedText text={guide?.demoVideoUrl} empty={t("No demo video yet.")} />
           </Detail>
           {canWorkOnProject(me, isMember) && (
             <EditSection
-              label={guide?.steps || guide?.demoVideoUrl ? t("Edit guide") : t("Write guide")}
-              open={!guide?.steps && project.status === "in_development"}
+              label={guide?.steps || guide?.stepsAr || guide?.demoVideoUrl ? t("Edit guide") : t("Write guide")}
+              open={!guide?.steps && !guide?.stepsAr && project.status === "in_development"}
             >
-              <GuideForm projectId={project.id} initial={{ steps: guide?.steps, demoVideoUrl: guide?.demoVideoUrl }} />
+              <GuideForm
+                projectId={project.id}
+                initial={{ steps: guide?.steps, stepsAr: guide?.stepsAr, demoVideoUrl: guide?.demoVideoUrl }}
+              />
             </EditSection>
           )}
         </CardContent>

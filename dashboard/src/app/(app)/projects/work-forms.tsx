@@ -8,11 +8,18 @@ import {
   saveEquipment,
   saveGuide,
   saveInstallation,
+  translateText,
 } from "@/app/actions/work";
+import { Languages } from "lucide-react";
+import { useRef, useState, useTransition } from "react";
 import { Field, SelectField, Submit, useForm, type Values } from "@/components/form-fields";
 import { FormMessage } from "@/components/form-message";
 import { useI18n } from "@/components/i18n-provider";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { EQUIPMENT_STATUS_LABELS, FLAG_TYPE_LABELS } from "@/lib/format";
+import type { Locale, Msg } from "@/lib/i18n";
 import { DEPARTMENT_LABELS, DEPARTMENTS } from "@/lib/permissions";
 
 export function RequestEquipmentForm({
@@ -116,14 +123,7 @@ export function GuideForm({ projectId, initial }: { projectId: string; initial: 
   return (
     <form key={f.key} action={f.formAction} className="flex flex-col gap-4">
       <input type="hidden" name="projectId" value={projectId} />
-      <Field
-        label={t("Installation steps")}
-        name="steps"
-        values={f.values}
-        multiline
-        rows={8}
-        placeholder={t("1. Mount the screens\n2. Connect the NFC readers to the PC\n3. Start the app from the desktop shortcut")}
-      />
+      <BilingualSteps values={f.values} />
       <Field
         label={t("Demo video link")}
         name="demoVideoUrl"
@@ -136,6 +136,70 @@ export function GuideForm({ projectId, initial }: { projectId: string; initial: 
       <FormMessage state={f.state} />
       <Submit pending={f.pending} label={t("Save guide")} pendingLabel={t("Saving…")} />
     </form>
+  );
+}
+
+const STEPS_PLACEHOLDER = {
+  en: "1. Mount the screens\n2. Connect the NFC readers to the PC\n3. Start the app from the desktop shortcut",
+  ar: "1. تركيب الشاشات\n2. توصيل قارئات NFC بالكمبيوتر\n3. تشغيل التطبيق من اختصار سطح المكتب",
+};
+
+function BilingualSteps({ values }: { values: Values }) {
+  const { t } = useI18n();
+  const refs = { en: useRef<HTMLTextAreaElement>(null), ar: useRef<HTMLTextAreaElement>(null) };
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<Msg>();
+
+  const translateInto = (to: Locale) => {
+    const from = to === "ar" ? "en" : "ar";
+    const text = refs[from].current?.value.trim() ?? "";
+    setError(undefined);
+    if (!text) return setError("Write something to translate first.");
+    startTransition(async () => {
+      const result = await translateText(text, to);
+      if (result.error) setError(result.error);
+      else if (refs[to].current) refs[to].current.value = result.text;
+    });
+  };
+
+  const box = (lang: Locale, name: string, label: Msg, button: Msg) => (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={`steps-${lang}`}>{t(label)}</Label>
+      <Textarea
+        id={`steps-${lang}`}
+        ref={refs[lang]}
+        name={name}
+        dir={lang === "ar" ? "rtl" : "ltr"}
+        lang={lang}
+        rows={8}
+        defaultValue={values[name] ?? ""}
+        placeholder={STEPS_PLACEHOLDER[lang]}
+      />
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="self-start"
+        disabled={pending}
+        onClick={() => translateInto(lang === "en" ? "ar" : "en")}
+      >
+        <Languages />
+        {pending ? t("Translating…") : t(button)}
+      </Button>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="grid gap-4 sm:grid-cols-2">
+        {box("en", "steps", "Installation steps (English)", "Translate to Arabic")}
+        {box("ar", "stepsAr", "Installation steps (Arabic)", "Translate to English")}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {t("Write in either language. The other one is translated automatically when you save if it's empty.")}
+      </p>
+      {error && <p className="text-sm text-destructive">{t(error)}</p>}
+    </div>
   );
 }
 
@@ -223,7 +287,11 @@ export function EquipmentForm({ initial }: { initial?: Values }) {
       <Field label={t("Notes (optional)")} name="notes" values={f.values} className="sm:col-span-3" />
       <div className="flex flex-col gap-2 sm:col-span-3">
         <FormMessage state={f.state} />
-        <Submit pending={f.pending} label={editing ? t("Save changes") : t("Add equipment")} pendingLabel={t("Saving…")} />
+        <Submit
+          pending={f.pending}
+          label={editing ? t("Save changes") : t("Add equipment")}
+          pendingLabel={t("Saving…")}
+        />
       </div>
     </form>
   );

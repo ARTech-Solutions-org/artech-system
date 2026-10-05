@@ -143,7 +143,8 @@ export const ar = {
   Content: "المحتوى",
   "Other data": "بيانات أخرى",
   "One link or note per line.": "رابط أو ملاحظة في كل سطر.",
-  "Voice notes, assets, logins, anything else the team needs.": "رسائل صوتية، ملفات، بيانات دخول، وأي شيء آخر يحتاجه الفريق.",
+  "Voice notes, assets, logins, anything else the team needs.":
+    "رسائل صوتية، ملفات، بيانات دخول، وأي شيء آخر يحتاجه الفريق.",
   "Create brief": "إنشاء الملخص",
   "Save brief": "حفظ الملخص",
   "Edit brief": "تعديل الملخص",
@@ -166,7 +167,8 @@ export const ar = {
   "Assign developers": "تكليف مطورين",
   "Add {name}": "إضافة {name}",
   "Make {name} lead": "تعيين {name} كقائد",
-  "If you don't pick a lead, the first selected developer becomes lead.": "إذا لم تختر قائدًا، يصبح أول مطور مختار هو القائد.",
+  "If you don't pick a lead, the first selected developer becomes lead.":
+    "إذا لم تختر قائدًا، يصبح أول مطور مختار هو القائد.",
   "Picking a lead here replaces the current lead.": "اختيار قائد هنا يستبدل القائد الحالي.",
   "Assign project": "تكليف المشروع",
   "Add to project": "إضافة إلى المشروع",
@@ -252,7 +254,8 @@ export const ar = {
   "Whole units only.": "أرقام صحيحة فقط.",
   "At least 1 unit.": "وحدة واحدة على الأقل.",
   "The end date must be after the start date.": "يجب أن يكون تاريخ النهاية بعد تاريخ البداية.",
-  "Stock and who is using it. Request equipment from a project page.": "المخزون ومن يستخدمه. اطلب المعدات من صفحة المشروع.",
+  "Stock and who is using it. Request equipment from a project page.":
+    "المخزون ومن يستخدمه. اطلب المعدات من صفحة المشروع.",
   "Add equipment": "إضافة معدة",
   "Use one entry per kind of item and set the quantity, e.g. 3 NFC readers.":
     "أضف سطرًا واحدًا لكل نوع وحدد الكمية، مثل 3 قارئات NFC.",
@@ -270,7 +273,8 @@ export const ar = {
   "Saved. {count} waitlisted request(s) approved.": "تم الحفظ. تم اعتماد {count} طلب من قائمة الانتظار.",
   "Another item already uses this code.": "هذا الكود مستخدم لصنف آخر.",
   "Invalid equipment.": "معدة غير صالحة.",
-  "Only the Tech Head or Operations Manager can manage equipment.": "رئيس القسم التقني أو مدير العمليات فقط يمكنه إدارة المعدات.",
+  "Only the Tech Head or Operations Manager can manage equipment.":
+    "رئيس القسم التقني أو مدير العمليات فقط يمكنه إدارة المعدات.",
   "Enter a short code, e.g. MQ3-01.": "أدخل كودًا قصيرًا، مثل MQ3-01.",
   "Enter the name.": "أدخل الاسم.",
   "Quantity can't be negative.": "لا يمكن أن تكون الكمية سالبة.",
@@ -285,9 +289,20 @@ export const ar = {
   "No demo video yet.": "لا يوجد فيديو عرض بعد.",
   "Edit guide": "تعديل الدليل",
   "Write guide": "كتابة الدليل",
-  "Installation steps": "خطوات التركيب",
-  "1. Mount the screens\n2. Connect the NFC readers to the PC\n3. Start the app from the desktop shortcut":
-    "1. تركيب الشاشات\n2. توصيل قارئات NFC بالكمبيوتر\n3. تشغيل التطبيق من اختصار سطح المكتب",
+  "Installation steps (English)": "خطوات التركيب (بالإنجليزية)",
+  "Installation steps (Arabic)": "خطوات التركيب (بالعربية)",
+  "Translate to Arabic": "ترجمة إلى العربية",
+  "Translate to English": "ترجمة إلى الإنجليزية",
+  "Translating…": "جارٍ الترجمة…",
+  "Write in either language. The other one is translated automatically when you save if it's empty.":
+    "اكتب بأي لغة. تُترجم اللغة الأخرى تلقائيًا عند الحفظ إذا كانت فارغة.",
+  "Write something to translate first.": "اكتب نصًا أولًا لترجمته.",
+  "Translation is not available right now. Try again or write it yourself.":
+    "الترجمة غير متاحة حاليًا. حاول مرة أخرى أو اكتبها بنفسك.",
+  "Guide saved, but the auto-translation failed. Use the Translate button or write both languages.":
+    "تم حفظ الدليل، لكن فشلت الترجمة التلقائية. استخدم زر الترجمة أو اكتب اللغتين.",
+  "Show in English": "عرض بالإنجليزية",
+  "Show in Arabic": "عرض بالعربية",
   "Demo video link": "رابط فيديو العرض",
   "Record the demo on the same setup that will be installed.": "سجّل العرض على نفس الإعداد الذي سيتم تركيبه.",
   "Save guide": "حفظ الدليل",
@@ -316,7 +331,8 @@ export const ar = {
   "Start installation": "بدء التركيب",
   "Mark installed": "تأكيد التركيب",
   "Pause: back to ready": "إيقاف: رجوع إلى جاهز",
-  "You can start once the Tech Head approves the project for installation.": "يمكنك البدء بعد اعتماد رئيس القسم التقني للمشروع للتركيب.",
+  "You can start once the Tech Head approves the project for installation.":
+    "يمكنك البدء بعد اعتماد رئيس القسم التقني للمشروع للتركيب.",
   "Only Operations can update the installation.": "فريق العمليات فقط يمكنه تحديث التركيب.",
   "Pick an active member of Operations.": "اختر عضوًا نشطًا من فريق العمليات.",
   "Real installation dates. Hidden from developers.": "مواعيد التركيب الفعلية. مخفية عن المطورين.",
@@ -383,9 +399,11 @@ export const ar = {
   "Also has {currencies} entries": "يوجد أيضًا قيود بـ {currencies}",
 
   // Assignments
-  "New briefs waiting for developers, and who is working on what.": "الملخصات الجديدة التي تنتظر مطورين، ومن يعمل على ماذا.",
+  "New briefs waiting for developers, and who is working on what.":
+    "الملخصات الجديدة التي تنتظر مطورين، ومن يعمل على ماذا.",
   "Waiting for assignment ({count})": "في انتظار التكليف ({count})",
-  "Open a brief to assign developers, set the deadline and milestones.": "افتح الملخص لتكليف المطورين وتحديد الموعد والمراحل.",
+  "Open a brief to assign developers, set the deadline and milestones.":
+    "افتح الملخص لتكليف المطورين وتحديد الموعد والمراحل.",
   "No briefs waiting.": "لا توجد ملخصات في الانتظار.",
   Submitted: "تاريخ التقديم",
   "Team workload": "حمل العمل على الفريق",
@@ -395,7 +413,8 @@ export const ar = {
 
   // Users
   "Add member": "إضافة عضو",
-  "The new member signs in with this temporary password and must change it.": "يسجل العضو الجديد الدخول بكلمة المرور المؤقتة ويجب أن يغيرها.",
+  "The new member signs in with this temporary password and must change it.":
+    "يسجل العضو الجديد الدخول بكلمة المرور المؤقتة ويجب أن يغيرها.",
   Role: "الدور",
   "Last login": "آخر دخول",
   "Full name": "الاسم الكامل",
@@ -416,7 +435,8 @@ export const ar = {
   "Enable account": "تفعيل الحساب",
   "{name} added. Share the temporary password; they will be asked to change it on first login.":
     "تمت إضافة {name}. شارك كلمة المرور المؤقتة؛ سيُطلب تغييرها عند أول دخول.",
-  "Password reset for {name}. They must change it on next login.": "تمت إعادة تعيين كلمة مرور {name}. يجب تغييرها عند الدخول التالي.",
+  "Password reset for {name}. They must change it on next login.":
+    "تمت إعادة تعيين كلمة مرور {name}. يجب تغييرها عند الدخول التالي.",
   "A user with this email already exists.": "يوجد مستخدم بنفس البريد الإلكتروني.",
   "You can only add members to your own department.": "يمكنك إضافة أعضاء إلى قسمك فقط.",
   "Only the super admin can appoint department heads.": "المدير العام فقط يمكنه تعيين رؤساء الأقسام.",
@@ -430,7 +450,8 @@ export const ar = {
   "Pick a department.": "اختر القسم.",
 
   // Account and login
-  "You are using a temporary password. Choose a new one to continue.": "أنت تستخدم كلمة مرور مؤقتة. اختر كلمة جديدة للمتابعة.",
+  "You are using a temporary password. Choose a new one to continue.":
+    "أنت تستخدم كلمة مرور مؤقتة. اختر كلمة جديدة للمتابعة.",
   "Change password": "تغيير كلمة المرور",
   "Current password": "كلمة المرور الحالية",
   "New password": "كلمة المرور الجديدة",

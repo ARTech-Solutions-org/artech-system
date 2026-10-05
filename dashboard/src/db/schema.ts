@@ -297,6 +297,7 @@ export const installations = pgTable(
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     steps: text("steps"),
+    stepsAr: text("steps_ar"),
     demoVideoUrl: text("demo_video_url"),
     leadTechnicianId: uuid("lead_technician_id").references(() => users.id),
     status: installationStatus("status").notNull().default("scheduled"),

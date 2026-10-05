@@ -16,7 +16,7 @@ export function listInstallations() {
       installationDate: projectSchedule.installationDate,
       locationLink: projectSchedule.locationLink,
       leadName: users.name,
-      guideReady: sql<boolean>`coalesce(${installations.steps} is not null and ${installations.demoVideoUrl} is not null, false)`,
+      guideReady: sql<boolean>`coalesce(coalesce(${installations.steps}, ${installations.stepsAr}) is not null and ${installations.demoVideoUrl} is not null, false)`,
       equipmentUnits: sql<number>`coalesce((
         select sum(er.quantity) from equipment_requests er
         where er.project_id = "projects"."id" and er.status = 'approved'

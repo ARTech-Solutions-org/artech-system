@@ -26,6 +26,12 @@ type Example = {
 const STEPS =
   "1. Unload and check every box against the equipment list\n2. Mount the screens and run the cables\n3. Connect the PC and NFC readers\n4. Start the app from the desktop shortcut and run the demo once\n5. Show the client how to restart it";
 
+const STEPS_AR: Record<string, string> = {
+  [STEPS]:
+    "1. فك الصناديق ومطابقة كل صندوق مع قائمة المعدات\n2. تركيب الشاشات وتمديد الكابلات\n3. توصيل الكمبيوتر وقارئات NFC\n4. تشغيل التطبيق من اختصار سطح المكتب وتجربة العرض مرة واحدة\n5. شرح طريقة إعادة التشغيل للعميل",
+  "1. Place the table\n2. Connect power and network": "1. وضع الطاولة في مكانها\n2. توصيل الكهرباء والشبكة",
+};
+
 const EXAMPLES: Example[] = [
   {
     name: "Museum VR Experience",
@@ -162,8 +168,8 @@ async function main() {
       if (ex.steps || ex.withLeadTech || ex.installStatus) {
         const started = ex.installStatus === "in_progress" || ex.installStatus === "done";
         await tx`
-          insert into installations (project_id, steps, demo_video_url, lead_technician_id, status, started_at, completed_at, notes)
-          values (${project.id}, ${ex.steps ?? null}, ${ex.demo ?? null}, ${ex.withLeadTech ? (tech?.id ?? null) : null},
+          insert into installations (project_id, steps, steps_ar, demo_video_url, lead_technician_id, status, started_at, completed_at, notes)
+          values (${project.id}, ${ex.steps ?? null}, ${(ex.steps && STEPS_AR[ex.steps]) ?? null}, ${ex.demo ?? null}, ${ex.withLeadTech ? (tech?.id ?? null) : null},
                   ${ex.installStatus ?? "scheduled"}, ${started ? new Date(Date.now() - 3 * 3600_000) : null},
                   ${ex.installStatus === "done" ? new Date(Date.now() - 3600_000) : null}, ${ex.report ?? null})`;
       }

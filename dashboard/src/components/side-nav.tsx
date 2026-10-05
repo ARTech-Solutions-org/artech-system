@@ -47,11 +47,11 @@ export function SideNav({ items }: { items: NavItem[] }) {
             aria-current={active ? "page" : undefined}
             className={`flex items-center gap-3 border-s-[3px] px-5 py-2.5 text-sm transition-colors ${
               active
-                ? "border-brand-purple bg-sidebar-accent text-white"
+                ? "border-white bg-sidebar-accent text-white"
                 : "border-transparent hover:bg-sidebar-accent hover:text-white"
             }`}
           >
-            <Icon className={`size-4 ${active ? "text-brand-purple" : ""}`} />
+            <Icon className="size-4" />
             <span className="flex-1">{n.label}</span>
             {!!n.count && (
               <span className="rounded-full bg-destructive px-2 text-xs leading-5 font-semibold text-white">

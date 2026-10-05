@@ -13,7 +13,7 @@ export default async function LoginPage() {
     <main className="flex flex-1 flex-col items-center justify-center gap-8 bg-brand-black p-6">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/artech-logo-white.png" alt="ARTECH, Live the experience" className="w-64 max-w-full" />
-      <Card className="w-full max-w-sm border-t-4 border-t-brand-purple">
+      <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-xl">{t("Sign in")}</CardTitle>
           <CardDescription>{t("Sign in with the account your department head created for you.")}</CardDescription>

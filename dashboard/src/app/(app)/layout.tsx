@@ -71,7 +71,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
               <div className="text-sm font-medium">{me.name}</div>
               <div className="text-xs text-muted-foreground">{t(roleTitle(me))}</div>
             </div>
-            <span className="flex size-9 items-center justify-center rounded-full bg-brand-purple text-xs font-semibold text-white">
+            <span className="flex size-9 items-center justify-center rounded-full bg-brand-black text-xs font-semibold text-white">
               {initials}
             </span>
           </div>

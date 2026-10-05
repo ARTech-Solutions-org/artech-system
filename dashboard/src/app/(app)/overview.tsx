@@ -47,8 +47,8 @@ export async function Overview() {
     .reduce((a, b) => a + b, 0);
 
   const tiles: { label: Msg; value: string | number; href: string; tone: string }[] = [
-    { label: "Active projects", value: active, href: "/projects", tone: "bg-brand-purple text-white" },
-    { label: "Open requests", value: openFlags.count, href: "/requests", tone: "bg-brand-info text-white" },
+    { label: "Active projects", value: active, href: "/projects", tone: "bg-brand-black text-white" },
+    { label: "Open requests", value: openFlags.count, href: "/requests", tone: "bg-brand-graphite text-white" },
     {
       label: "Past dev deadline",
       value: overdue,

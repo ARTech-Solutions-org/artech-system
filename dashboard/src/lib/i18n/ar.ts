@@ -620,4 +620,9 @@ export const ar = {
   "If you can read this, email notifications are working.": "إذا كنت تقرأ هذه الرسالة، فإشعارات البريد تعمل.",
   "{failed} email(s) failed. See the email log below.": "فشل إرسال {failed} رسالة. راجع سجل البريد بالأسفل.",
   "Done: {sent} email(s) sent.": "تم: أُرسلت {sent} رسالة.",
+  Dictate: "إملاء صوتي",
+  "Stop dictation": "إيقاف الإملاء",
+  "Dictation language": "لغة الإملاء",
+  "Allow microphone access to dictate.": "اسمح بالوصول إلى الميكروفون لاستخدام الإملاء.",
+  "Dictation stopped. Try again.": "توقف الإملاء. حاول مرة أخرى.",
 } as const;

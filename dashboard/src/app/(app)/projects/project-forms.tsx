@@ -41,8 +41,8 @@ function BriefFields({ values }: { values: Values }) {
   const lines = t("One link or note per line.");
   return (
     <>
-      <Field label={t("Project name")} name="name" values={values} required />
-      <Field label={t("Client")} name="clientName" values={values} />
+      <Field label={t("Project name")} name="name" values={values} required voice />
+      <Field label={t("Client")} name="clientName" values={values} voice />
       <Field label={t("Description")} name="description" values={values} multiline className="sm:col-span-2" />
       <Field label={t("References")} name="refs" values={values} multiline hint={lines} className="sm:col-span-2" />
       <Field label={t("Design")} name="design" values={values} multiline hint={lines} />

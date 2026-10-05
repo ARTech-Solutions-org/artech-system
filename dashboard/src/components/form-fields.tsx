@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useId } from "react";
+import { useActionState, useId, useRef } from "react";
 import type { FormState } from "@/app/actions/auth";
+import { DictateButton } from "@/components/dictate-button";
 import { selectClass } from "@/components/form-message";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ export function Field({
   multiline,
   rows = 3,
   className,
+  voice = multiline,
   ...props
 }: {
   label: string;
@@ -27,13 +29,20 @@ export function Field({
   multiline?: boolean;
   rows?: number;
   className?: string;
+  /** Show a microphone button that types what you say. On by default for multi-line fields. */
+  voice?: boolean;
 } & Omit<React.ComponentProps<"input">, "name" | "defaultValue">) {
   const id = useId();
+  const ref = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
   return (
     <div className={`flex flex-col gap-1.5 ${className ?? ""}`}>
-      <Label htmlFor={id}>{label}</Label>
+      <div className="flex min-h-6 items-center justify-between gap-2">
+        <Label htmlFor={id}>{label}</Label>
+        {voice && <DictateButton target={ref} />}
+      </div>
       {multiline ? (
         <Textarea
+          ref={ref}
           id={id}
           name={name}
           defaultValue={values[name] ?? ""}
@@ -42,7 +51,7 @@ export function Field({
           required={props.required}
         />
       ) : (
-        <Input id={id} name={name} defaultValue={values[name] ?? ""} {...props} />
+        <Input ref={ref} id={id} name={name} defaultValue={values[name] ?? ""} {...props} />
       )}
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>

@@ -441,6 +441,7 @@ export const ar = {
   "Enter your email.": "أدخل بريدك الإلكتروني.",
   "Enter your password.": "أدخل كلمة المرور.",
   "Wrong email or password.": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+  "Could not reach the database. Try again.": "تعذر الوصول إلى قاعدة البيانات. حاول مرة أخرى.",
   "This account is not active. Contact your department head.": "هذا الحساب غير نشط. تواصل مع رئيس قسمك.",
   "Too many failed attempts. Try again in 15 minutes.": "محاولات فاشلة كثيرة. حاول مرة أخرى بعد 15 دقيقة.",
 

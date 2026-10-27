@@ -50,28 +50,33 @@ export async function login(_: FormState, formData: FormData): Promise<FormState
   const email = parsed.data.email.toLowerCase();
   if (isLockedOut(email)) return { error: "Too many failed attempts. Try again in 15 minutes.", email };
 
-  const [user] = await db
-    .select({ id: users.id, passwordHash: users.passwordHash, status: users.status })
-    .from(users)
-    .where(eq(sql`lower(${users.email})`, email))
-    .limit(1);
+  try {
+    const [user] = await db
+      .select({ id: users.id, passwordHash: users.passwordHash, status: users.status })
+      .from(users)
+      .where(eq(sql`lower(${users.email})`, email))
+      .limit(1);
 
-  const valid = await verifyPassword(parsed.data.password, user?.passwordHash ?? null);
-  if (!user || !valid) {
-    recordFailure(email);
-    return { error: "Wrong email or password.", email };
-  }
-  if (user.status !== "active") {
-    return { error: "This account is not active. Contact your department head.", email };
-  }
+    const valid = await verifyPassword(parsed.data.password, user?.passwordHash ?? null);
+    if (!user || !valid) {
+      recordFailure(email);
+      return { error: "Wrong email or password.", email };
+    }
+    if (user.status !== "active") {
+      return { error: "This account is not active. Contact your department head.", email };
+    }
 
-  failures.delete(email);
-  await db
-    .update(users)
-    .set({ lastLoginAt: new Date(), locale: await getLocale() })
-    .where(eq(users.id, user.id));
-  await createSession(user.id);
-  await audit({ userId: user.id, action: "login", entity: "user", entityId: user.id });
+    failures.delete(email);
+    await db
+      .update(users)
+      .set({ lastLoginAt: new Date(), locale: await getLocale() })
+      .where(eq(users.id, user.id));
+    await createSession(user.id);
+    await audit({ userId: user.id, action: "login", entity: "user", entityId: user.id });
+  } catch (e) {
+    console.error("login failed", e);
+    return { error: "Could not reach the database. Try again.", email };
+  }
   redirect("/");
 }
 

@@ -19,10 +19,14 @@ async function systemChecks(): Promise<Check[]> {
     .execute<{ version: string }>(sql`select version()`)
     .then((rows): Check => ({ name: "Postgres", ok: true, detail: rows[0].version.split(" on ")[0] }))
     .catch((e: Error): Check => ({ name: "Postgres", ok: false, detail: e.message }));
-  const n8n = fetch(`${process.env.N8N_URL}/healthz`, { signal: AbortSignal.timeout(3000) })
-    .then((res): Check => ({ name: "n8n", ok: res.ok, detail: res.ok ? "OK" : `HTTP ${res.status}` }))
-    .catch((e: Error): Check => ({ name: "n8n", ok: false, detail: e.message }));
-  return Promise.all([postgres, n8n]);
+  const mail: Promise<Check> = process.env.SMTP_HOST
+    ? Promise.resolve({ name: "Email", ok: true, detail: process.env.SMTP_HOST })
+    : process.env.N8N_URL
+      ? fetch(`${process.env.N8N_URL}/healthz`, { signal: AbortSignal.timeout(3000) })
+          .then((res): Check => ({ name: "n8n", ok: res.ok, detail: res.ok ? "OK" : `HTTP ${res.status}` }))
+          .catch((e: Error): Check => ({ name: "n8n", ok: false, detail: e.message }))
+      : Promise.resolve({ name: "Email", ok: false, detail: "SMTP_HOST is not set" });
+  return Promise.all([postgres, mail]);
 }
 
 export default async function Home() {

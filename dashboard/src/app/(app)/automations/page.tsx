@@ -43,7 +43,11 @@ export default async function AutomationsPage() {
     <div className="flex max-w-5xl flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold">{t("Automations")}</h1>
-        <p className="text-muted-foreground">{t("Email notifications and scheduled jobs run by n8n.")}</p>
+        <p className="text-muted-foreground">
+          {process.env.SMTP_HOST
+            ? t("Email notifications and scheduled jobs (daily, weekly, monthly).")
+            : t("Email notifications and scheduled jobs run by n8n.")}
+        </p>
       </div>
 
       <Card>
@@ -57,60 +61,64 @@ export default async function AutomationsPage() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
-            {t(
-              'Until the real sender is set, emails go to the local test inbox at http://localhost:8025. To switch, add the SMTP settings to dashboard/.env.local and run npm run n8n:setup, or edit the "Studio OS Email" credential in n8n.',
-            )}
+            {process.env.SMTP_HOST
+              ? t("Emails go out through SMTP. Daily, weekly and monthly jobs run on Vercel at 8:00 and 9:00 Cairo time.")
+              : t(
+                  'Until the real sender is set, emails go to the local test inbox at http://localhost:8025. To switch, add the SMTP settings to dashboard/.env.local and run npm run n8n:setup, or edit the "Studio OS Email" credential in n8n.',
+                )}
           </p>
           <RunButtons />
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("n8n workflows")}</CardTitle>
-          {status.error && (
-            <CardDescription className="text-destructive">
-              {t("n8n is not reachable: {error}", { error: status.error })}
-            </CardDescription>
-          )}
-        </CardHeader>
-        <CardContent>
-          {status.workflows.length === 0 && !status.error ? (
-            <p className="text-sm text-muted-foreground">
-              {t("No Studio OS workflows in n8n. Run npm run n8n:setup.")}
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("Workflow")}</TableHead>
-                  <TableHead>{t("State")}</TableHead>
-                  <TableHead>{t("Last run")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {status.workflows.map((w) => {
-                  const run = lastRun(w.id);
-                  return (
-                    <TableRow key={w.id}>
-                      <TableCell className="font-medium">{workflowName.get(w.id)}</TableCell>
-                      <TableCell>
-                        <Badge variant={w.active ? "secondary" : "destructive"}>
-                          {w.active ? t("Active") : t("Inactive")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="flex items-center gap-2">
-                        {runBadge(run)}
-                        {run && <span className="text-muted-foreground">{fmt.dateTime(new Date(run.startedAt))}</span>}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {process.env.N8N_URL ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("n8n workflows")}</CardTitle>
+            {status.error && (
+              <CardDescription className="text-destructive">
+                {t("n8n is not reachable: {error}", { error: status.error })}
+              </CardDescription>
+            )}
+          </CardHeader>
+          <CardContent>
+            {status.workflows.length === 0 && !status.error ? (
+              <p className="text-sm text-muted-foreground">
+                {t("No Studio OS workflows in n8n. Run npm run n8n:setup.")}
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("Workflow")}</TableHead>
+                    <TableHead>{t("State")}</TableHead>
+                    <TableHead>{t("Last run")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {status.workflows.map((w) => {
+                    const run = lastRun(w.id);
+                    return (
+                      <TableRow key={w.id}>
+                        <TableCell className="font-medium">{workflowName.get(w.id)}</TableCell>
+                        <TableCell>
+                          <Badge variant={w.active ? "secondary" : "destructive"}>
+                            {w.active ? t("Active") : t("Inactive")}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="flex items-center gap-2">
+                          {runBadge(run)}
+                          {run && <span className="text-muted-foreground">{fmt.dateTime(new Date(run.startedAt))}</span>}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {status.executions.length > 0 && (
         <Card>
@@ -143,7 +151,11 @@ export default async function AutomationsPage() {
       <Card>
         <CardHeader>
           <CardTitle>{t("Email log")}</CardTitle>
-          <CardDescription>{t("The last 30 emails the dashboard handed to n8n.")}</CardDescription>
+          <CardDescription>
+            {process.env.SMTP_HOST
+              ? t("The last 30 emails sent.")
+              : t("The last 30 emails the dashboard handed to n8n.")}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {log.length === 0 ? (

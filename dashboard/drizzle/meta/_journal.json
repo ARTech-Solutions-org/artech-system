@@ -85,6 +85,20 @@
       "when": 1791207606678,
       "tag": "0011_client_feedback",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792585633007,
+      "tag": "0012_project_files",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792587308369,
+      "tag": "0013_project_completed_at",
+      "breakpoints": true
     }
   ]
 }

@@ -12,6 +12,7 @@ import {
   projectSchedule,
   users,
 } from "@/db/schema";
+import { ALL_DISK_FOLDERS } from "@/lib/folder-names";
 import { FLAG_TYPE_LABELS } from "@/lib/format";
 import { type OutgoingEmail, type Recipient, sendEmails } from "@/lib/mail";
 
@@ -531,5 +532,32 @@ export function notifyClientReopened(itemId: string, clientName: string, comment
         link: feedbackLink(t, i.projectId),
       }),
     }));
+  });
+}
+
+/** Asks n8n to mkdir the project's folders on the office disk. No-op if n8n is off. */
+export function notifyProjectFolders(project: { id: string; name: string; folderKey: string }) {
+  after(async () => {
+    const base = (process.env.N8N_URL ?? "").replace(/\/$/, "");
+    const secret = process.env.AUTOMATION_SECRET;
+    if (!base || !secret) return;
+    const [year, ...rest] = project.folderKey.split("/");
+    try {
+      await fetch(`${base}/webhook/studio-os-folders`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-studio-secret": secret },
+        body: JSON.stringify({
+          projectId: project.id,
+          name: project.name,
+          year,
+          slug: rest.join("/") || project.folderKey,
+          folderKey: project.folderKey,
+          folders: ALL_DISK_FOLDERS,
+        }),
+        signal: AbortSignal.timeout(15_000),
+      });
+    } catch (e) {
+      console.error("Create folders webhook failed", e);
+    }
   });
 }

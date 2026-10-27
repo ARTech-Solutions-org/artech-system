@@ -10,6 +10,7 @@ const JOBS: { job: string; label: Msg }[] = [
   { job: "test", label: "Send me a test email" },
   { job: "daily", label: "Run daily reminders now" },
   { job: "weekly", label: "Send weekly summary now" },
+  { job: "monthly", label: "Send this month's completed-projects report" },
 ];
 
 export function RunButtons() {

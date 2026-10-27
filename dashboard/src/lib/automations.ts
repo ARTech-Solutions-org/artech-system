@@ -12,9 +12,16 @@ import {
   users,
 } from "@/db/schema";
 import { ACTIVE_STATUSES, PROJECT_STATUS_LABELS, type ProjectStatus } from "@/lib/format";
-import type { Msg } from "@/lib/i18n";
+import { isLocale, makeFormatters, type Msg } from "@/lib/i18n";
 import { daysBetween, todayInCairo } from "@/lib/installations";
 import { type OutgoingEmail, sendEmails } from "@/lib/mail";
+import {
+  completedProjectsWorkbook,
+  listCompletedInRange,
+  monthlyReportRecipients,
+  reportRange,
+  type ReportPeriod,
+} from "@/lib/monthly-report";
 import { heads, projectDevelopers, projectPath, recipients, techHeads } from "@/lib/notify";
 
 const IN_DEVELOPMENT: ProjectStatus[] = ["assigned", "in_development", "internal_review"];
@@ -312,4 +319,78 @@ export async function runWeekly() {
 
   const result = await sendEmails(emails);
   return { date: today, emails: emails.length, ...result };
+}
+
+const cairoDay = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "Africa/Cairo" });
+
+/**
+ * 1st of the month at 9:00: last month's completed projects, to Business Head and super admins.
+ * The Automations button sends this month so far, so a completion can be checked the same day.
+ */
+export async function runMonthly(period: ReportPeriod = "previous") {
+  const today = todayInCairo();
+  const range = reportRange(period, today);
+  const rows = await listCompletedInRange(range.start, range.end);
+  const to = unique(await monthlyReportRecipients());
+  const files = new Map<string, Awaited<ReturnType<typeof completedProjectsWorkbook>>>();
+  if (rows.length) {
+    for (const recipient of to) {
+      const locale = isLocale(recipient.locale) ? recipient.locale : "en";
+      if (files.has(locale)) continue;
+      const month = makeFormatters(locale).monthYear(range.year, range.month);
+      files.set(locale, await completedProjectsWorkbook(rows, locale, month, range.start.slice(0, 7)));
+    }
+  }
+
+  const emails: OutgoingEmail[] = to.map((recipient) => {
+    const locale = isLocale(recipient.locale) ? recipient.locale : "en";
+    return {
+      event: "monthly_completed",
+      dedupeKey: `monthly_completed:${range.start}:${period}:${recipient.email}`,
+      recipient,
+      attachments: files.has(locale) ? [files.get(locale)!] : undefined,
+      content: (t, fmt) => {
+        const month = fmt.monthYear(range.year, range.month);
+        if (!rows.length) {
+          return {
+            subject: t("Studio OS: no projects completed in {month}", { month }),
+            lines: [t("No projects were completed in {month}.", { month })],
+            link: { label: t("Open projects"), path: "/projects" },
+          };
+        }
+        return {
+          subject: t("Studio OS: {count} project(s) completed in {month}", { count: rows.length, month }),
+          lines: [
+            t("Projects completed in {month}:", { month }),
+            ...rows.map((p) =>
+              p.clientName
+                ? t("{project} ({client}) — completed {date}", {
+                    project: p.name,
+                    client: p.clientName,
+                    date: fmt.date(cairoDay(p.completedAt)),
+                  })
+                : t("{project} — completed {date}", {
+                    project: p.name,
+                    date: fmt.date(cairoDay(p.completedAt)),
+                  }),
+            ),
+            "",
+            t("The spreadsheet is attached."),
+          ],
+          link: { label: t("Open projects"), path: "/projects" },
+        };
+      },
+    };
+  });
+
+  const result = await sendEmails(emails);
+  return {
+    date: today,
+    period,
+    from: range.start,
+    to: range.end,
+    projects: rows.length,
+    emails: emails.length,
+    ...result,
+  };
 }

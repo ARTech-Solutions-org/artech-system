@@ -173,10 +173,26 @@ export function canManageSuppliers(v: Viewer): boolean {
   return v.isSuperAdmin || v.department === "business" || v.department === "operations";
 }
 
+/** Upload or delete project files on R2. Developers only for projects they are on. */
+export function canManageProjectFiles(v: Viewer, isMember: boolean): boolean {
+  return (
+    v.isSuperAdmin ||
+    v.department === "business" ||
+    v.department === "operations" ||
+    isTechHead(v) ||
+    (v.department === "development" && isMember)
+  );
+}
+
 export function canWriteInstallationGuide(v: Viewer): boolean {
   return v.isSuperAdmin || v.department === "development";
 }
 
 export function canManageInstallation(v: Viewer): boolean {
   return v.isSuperAdmin || v.department === "operations";
+}
+
+/** Mark an installed project as completed. The monthly report uses this date. */
+export function canCloseProject(v: Viewer): boolean {
+  return v.isSuperAdmin || v.department === "business";
 }

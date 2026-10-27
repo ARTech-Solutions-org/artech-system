@@ -13,6 +13,7 @@ import type { ProjectStatus } from "@/lib/format";
 import { firstIssue, isLocale, type Locale, type Msg } from "@/lib/i18n";
 import {
   canAssign,
+  canCloseProject,
   canManageEquipment,
   canManageInstallation,
   canCancelFlag,
@@ -445,12 +446,15 @@ const OPS_MOVES: Moves = {
   ready_for_installation: ["installing"],
   installing: ["installed", "ready_for_installation"],
 };
+const CLOSE_MOVES: Moves = {
+  installed: ["completed"],
+};
 
 export async function moveStatus(_: FormState, formData: FormData): Promise<FormState> {
   const me = await requireUser();
   const id = z.uuid().safeParse(formData.get("projectId"));
   const to = z
-    .enum(["in_development", "internal_review", "ready_for_installation", "installing", "installed"])
+    .enum(["in_development", "internal_review", "ready_for_installation", "installing", "installed", "completed"])
     .safeParse(formData.get("to"));
   if (!id.success || !to.success) return { error: "Invalid status change." };
 
@@ -462,6 +466,7 @@ export async function moveStatus(_: FormState, formData: FormData): Promise<Form
     ...(canWorkOnProject(me, access.isMember) ? (DEV_MOVES[from] ?? []) : []),
     ...(canAssign(me) ? (HEAD_MOVES[from] ?? []) : []),
     ...(canManageInstallation(me) ? (OPS_MOVES[from] ?? []) : []),
+    ...(canCloseProject(me) ? (CLOSE_MOVES[from] ?? []) : []),
   ];
   if (!allowed.includes(to.data)) return { error: "That status change isn't allowed from here." };
 
@@ -473,7 +478,13 @@ export async function moveStatus(_: FormState, formData: FormData): Promise<Form
   }
 
   await db.transaction(async (tx) => {
-    await tx.update(projects).set({ status: to.data }).where(eq(projects.id, id.data));
+    await tx
+      .update(projects)
+      .set({
+        status: to.data,
+        completedAt: to.data === "completed" ? new Date() : from === "completed" ? null : undefined,
+      })
+      .where(eq(projects.id, id.data));
     const now = new Date();
     const install =
       to.data === "installing"

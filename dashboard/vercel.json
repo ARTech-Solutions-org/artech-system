@@ -1,0 +1,7 @@
+{
+  "crons": [
+    { "path": "/api/automations/daily", "schedule": "0 6 * * *" },
+    { "path": "/api/automations/weekly", "schedule": "0 7 * * 0" },
+    { "path": "/api/automations/monthly", "schedule": "0 7 1 * *" }
+  ]
+}

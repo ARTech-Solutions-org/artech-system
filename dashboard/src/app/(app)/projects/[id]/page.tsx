@@ -41,8 +41,9 @@ import {
 } from "@/lib/permissions";
 import { getProjectAccess, listDevelopers, listTechnicians } from "@/lib/projects";
 import { FeedbackSection } from "./feedback-section";
+import { FilesSection } from "./files-section";
 import { Detail, EditSection, SmallAction } from "./project-ui";
-import { InstallationActions, StatusActions, WorkSections } from "./work-sections";
+import { CloseProjectActions, InstallationActions, StatusActions, WorkSections } from "./work-sections";
 import {
   AddMembersForm,
   DeadlineForm,
@@ -199,6 +200,8 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
       </Card>
 
       <FeedbackSection me={me} project={project} isMember={isMember} />
+
+      <FilesSection me={me} project={project} isMember={isMember} />
 
       <Card>
         <CardHeader>
@@ -369,6 +372,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
               <LinkedText text={install?.notes} />
             </Detail>
             <InstallationActions me={me} project={project} />
+            <CloseProjectActions me={me} project={project} />
             {operate && (
               <EditSection label={t("Edit lead technician and report")}>
                 <InstallationForm

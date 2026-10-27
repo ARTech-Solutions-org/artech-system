@@ -22,6 +22,7 @@ async function api<T>(path: string): Promise<T> {
 
 /** Studio OS workflows and their latest runs; `error` is set when n8n can't be reached. */
 export async function automationStatus() {
+  if (!process.env.N8N_URL) return { error: null, workflows: [], executions: [] };
   try {
     const [workflows, executions] = await Promise.all([
       api<{ data: N8nWorkflow[] }>("/workflows?limit=100"),

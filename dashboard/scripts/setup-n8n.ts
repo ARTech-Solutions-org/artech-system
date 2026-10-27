@@ -124,11 +124,40 @@ function workflows(smtpId: string, secretId: string) {
           parameters: { fieldToSplitOut: "body.emails", options: {} },
         },
         {
+          id: "attach",
+          name: "Attach files",
+          type: "n8n-nodes-base.code",
+          typeVersion: 2,
+          position: [440, 0],
+          parameters: {
+            jsCode: `const out = [];
+for (const item of $input.all()) {
+  const json = { ...item.json };
+  const attachments = json.attachments;
+  delete json.attachments;
+  const binary = {};
+  if (Array.isArray(attachments)) {
+    for (let i = 0; i < attachments.length; i++) {
+      const a = attachments[i];
+      if (!a?.content || !a?.filename) continue;
+      binary['attach' + i] = await this.helpers.prepareBinaryData(
+        Buffer.from(String(a.content), 'base64'),
+        String(a.filename),
+        a.contentType ? String(a.contentType) : 'application/octet-stream',
+      );
+    }
+  }
+  out.push({ json, binary });
+}
+return out;`,
+          },
+        },
+        {
           id: "send",
           name: "Send email",
           type: "n8n-nodes-base.emailSend",
           typeVersion: 2.1,
-          position: [440, 0],
+          position: [660, 0],
           parameters: {
             fromEmail: "={{ $json.from }}",
             toEmail: "={{ $json.to }}",
@@ -136,14 +165,18 @@ function workflows(smtpId: string, secretId: string) {
             emailFormat: "both",
             text: "={{ $json.text }}",
             html: "={{ $json.html }}",
-            options: { appendAttribution: false },
+            options: {
+              appendAttribution: false,
+              attachments: '={{ $binary ? Object.keys($binary).join(",") : "" }}',
+            },
           },
           credentials: { smtp: { id: smtpId, name: SMTP_CREDENTIAL } },
         },
       ],
       connections: {
         "Emails from dashboard": { main: [[{ node: "One item per email", type: "main", index: 0 }]] },
-        "One item per email": { main: [[{ node: "Send email", type: "main", index: 0 }]] },
+        "One item per email": { main: [[{ node: "Attach files", type: "main", index: 0 }]] },
+        "Attach files": { main: [[{ node: "Send email", type: "main", index: 0 }]] },
       },
     },
     {
@@ -177,6 +210,69 @@ function workflows(smtpId: string, secretId: string) {
         callDashboard("weekly"),
       ],
       connections: { "Sunday at 9:00": { main: [[{ node: "Run weekly job", type: "main", index: 0 }]] } },
+    },
+    {
+      name: "[Studio OS] Monthly completed projects",
+      settings,
+      nodes: [
+        {
+          id: "schedule",
+          name: "1st of the month at 9:00",
+          type: "n8n-nodes-base.scheduleTrigger",
+          typeVersion: 1.2,
+          position: [0, 0],
+          parameters: { rule: { interval: [{ field: "months", triggerAtDayOfMonth: 1, triggerAtHour: 9 }] } },
+        },
+        callDashboard("monthly"),
+      ],
+      connections: { "1st of the month at 9:00": { main: [[{ node: "Run monthly job", type: "main", index: 0 }]] } },
+    },
+    {
+      name: "[Studio OS] Create project folders",
+      settings,
+      nodes: [
+        {
+          id: "webhook",
+          name: "New project",
+          type: "n8n-nodes-base.webhook",
+          typeVersion: 2,
+          position: [0, 0],
+          webhookId: "studio-os-folders",
+          parameters: {
+            httpMethod: "POST",
+            path: "studio-os-folders",
+            authentication: "headerAuth",
+            responseMode: "lastNode",
+            responseData: "allEntries",
+            options: {},
+          },
+          credentials: secretCredential,
+        },
+        {
+          id: "mkdir",
+          name: "Make folders on disk",
+          type: "n8n-nodes-base.code",
+          typeVersion: 2,
+          position: [260, 0],
+          parameters: {
+            jsCode: `const fs = require('fs');
+const path = require('path');
+const item = $input.first().json.body ?? $input.first().json;
+const root = '/data/projects';
+const year = String(item.year ?? new Date().getFullYear());
+const slug = String(item.slug ?? item.folderKey ?? 'project');
+const base = path.join(root, year, slug);
+const folders = Array.isArray(item.folders) && item.folders.length
+  ? item.folders
+  : ['00-brief','01-client-assets','02-brand','03-design','04-content','05-preview','06-delivery','09-working','10-3d','11-edit'];
+for (const folder of folders) {
+  fs.mkdirSync(path.join(base, String(folder)), { recursive: true });
+}
+return [{ json: { ok: true, path: base, folders } }];`,
+          },
+        },
+      ],
+      connections: { "New project": { main: [[{ node: "Make folders on disk", type: "main", index: 0 }]] } },
     },
   ];
 }

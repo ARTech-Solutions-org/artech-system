@@ -42,10 +42,14 @@ services:
       # Scheduled workflows call the dashboard at this address ($env.DASHBOARD_URL).
       DASHBOARD_URL: ${DASHBOARD_URL:-http://host.docker.internal:3000}
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      # Lets the "Create project folders" workflow call fs.mkdirSync.
+      NODE_FUNCTION_ALLOW_BUILTIN: fs
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - n8n_data:/home/node/.n8n
+      # Office project files. Override PROJECTS_DIR in .env (e.g. D:/projects).
+      - ${PROJECTS_DIR:-./projects}:/data/projects
     depends_on:
       postgres:
         condition: service_healthy

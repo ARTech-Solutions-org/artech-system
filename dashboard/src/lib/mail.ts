@@ -1,6 +1,7 @@
 import "server-only";
 import { timingSafeEqual } from "node:crypto";
 import { inArray } from "drizzle-orm";
+import nodemailer from "nodemailer";
 import { db } from "@/db";
 import { notifications } from "@/db/schema";
 import { dirOf, type Formatters, isLocale, type Locale, makeFormatters, makeT, type T } from "@/lib/i18n";
@@ -16,6 +17,13 @@ export type EmailContent = {
   link?: { label: string; path: string };
 };
 
+export type EmailAttachment = {
+  filename: string;
+  contentType: string;
+  /** Base64. Attached when sending over SMTP or n8n. */
+  content: string;
+};
+
 export type OutgoingEmail = {
   event: string;
   recipient: Recipient;
@@ -23,6 +31,7 @@ export type OutgoingEmail = {
   projectId?: string;
   /** Emails with the same key go to each address at most once. */
   dedupeKey?: string;
+  attachments?: EmailAttachment[];
 };
 
 const appUrl = () => (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
@@ -73,8 +82,59 @@ function render(content: EmailContent, locale: Locale, t: T) {
   return { html, text };
 }
 
+type MailPayload = {
+  id: number;
+  to: string;
+  from: string;
+  subject: string;
+  html: string;
+  text: string;
+  attachments?: EmailAttachment[];
+};
+
+async function deliver(batch: MailPayload[]) {
+  if (process.env.SMTP_HOST) {
+    const port = Number(process.env.SMTP_PORT ?? 465);
+    const secure = (process.env.SMTP_SECURE ?? "true") === "true";
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port,
+      secure,
+      auth:
+        process.env.SMTP_USER || process.env.SMTP_PASSWORD
+          ? { user: process.env.SMTP_USER ?? "", pass: process.env.SMTP_PASSWORD ?? "" }
+          : undefined,
+    });
+    for (const mail of batch) {
+      await transporter.sendMail({
+        from: mail.from,
+        to: mail.to,
+        subject: mail.subject,
+        html: mail.html,
+        text: mail.text,
+        attachments: mail.attachments?.map((a) => ({
+          filename: a.filename,
+          contentType: a.contentType,
+          content: Buffer.from(a.content, "base64"),
+        })),
+      });
+    }
+    return;
+  }
+  if (!process.env.N8N_URL || !process.env.AUTOMATION_SECRET) {
+    throw new Error("Set SMTP_HOST (Vercel) or N8N_URL and AUTOMATION_SECRET (local n8n).");
+  }
+  const res = await fetch(webhookUrl(), {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-studio-secret": process.env.AUTOMATION_SECRET },
+    body: JSON.stringify({ emails: batch }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) throw new Error(`n8n answered ${res.status}: ${(await res.text()).slice(0, 300)}`);
+}
+
 /**
- * Logs each email, then hands the batch to the n8n email workflow, which sends it through the SMTP credential.
+ * Logs each email, then sends through SMTP (production) or the n8n email workflow (local Mailpit).
  * Never throws: a failed send is recorded in `notifications` and shown on the Automations page.
  */
 export async function sendEmails(emails: OutgoingEmail[]) {
@@ -113,21 +173,14 @@ export async function sendEmails(emails: OutgoingEmail[]) {
       subject: match.content.subject,
       html: match.html,
       text: match.text,
+      ...(match.e.attachments?.length ? { attachments: match.e.attachments } : {}),
     };
   });
   const ids = batch.map((b) => b.id);
 
   let error: string | null = null;
   try {
-    if (!process.env.N8N_URL || !process.env.AUTOMATION_SECRET)
-      throw new Error("N8N_URL or AUTOMATION_SECRET is not set");
-    const res = await fetch(webhookUrl(), {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-studio-secret": process.env.AUTOMATION_SECRET },
-      body: JSON.stringify({ emails: batch }),
-      signal: AbortSignal.timeout(60_000),
-    });
-    if (!res.ok) error = `n8n answered ${res.status}: ${(await res.text()).slice(0, 300)}`;
+    await deliver(batch);
   } catch (e) {
     error = e instanceof Error ? e.message : String(e);
   }
@@ -140,8 +193,9 @@ export async function sendEmails(emails: OutgoingEmail[]) {
 }
 
 export function isAutomationRequest(req: Request) {
-  const secret = process.env.AUTOMATION_SECRET;
-  const given = req.headers.get("x-studio-secret");
+  const secret = process.env.CRON_SECRET || process.env.AUTOMATION_SECRET;
+  const bearer = req.headers.get("authorization");
+  const given = bearer?.startsWith("Bearer ") ? bearer.slice(7) : req.headers.get("x-studio-secret");
   if (!secret || !given) return false;
   const a = Buffer.from(secret);
   const b = Buffer.from(given);

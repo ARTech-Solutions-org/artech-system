@@ -302,6 +302,8 @@ export const ar = {
   "Edit lead technician and report": "تعديل الفني المسؤول والتقرير",
   "Start installation": "بدء التركيب",
   "Mark installed": "تأكيد التركيب",
+  "Mark completed": "تأكيد اكتمال المشروع",
+  "Business marks the project completed after installation.": "قسم الأعمال يؤكد اكتمال المشروع بعد التركيب.",
   "Pause: back to ready": "إيقاف: رجوع إلى جاهز",
   "You can start once the Tech Head approves the project for installation.":
     "يمكنك البدء بعد اعتماد رئيس القسم التقني للمشروع للتركيب.",
@@ -488,6 +490,17 @@ export const ar = {
   "Past their dev deadline:": "تجاوزت موعد التطوير:",
   "Open requests: {count}": "الطلبات المفتوحة: {count}",
   "Equipment in use: {count} unit(s)": "المعدات المستخدمة: {count} وحدة",
+  "Studio OS: {count} project(s) completed in {month}": "Studio OS: {count} مشروع مكتمل في {month}",
+  "Studio OS: no projects completed in {month}": "Studio OS: لا مشاريع مكتملة في {month}",
+  "Projects completed in {month}:": "المشاريع المكتملة في {month}:",
+  "No projects were completed in {month}.": "لم يُكمل أي مشروع في {month}.",
+  "The spreadsheet is attached.": "الملف مرفق.",
+  "{project} ({client}) — completed {date}": "{project} ({client}) — اكتمل في {date}",
+  "{project} — completed {date}": "{project} — اكتمل في {date}",
+  "Open projects": "فتح المشاريع",
+  "Completed date": "تاريخ الاكتمال",
+  "Completed projects": "المشاريع المكتملة",
+  "Completed projects — {month}": "المشاريع المكتملة — {month}",
 
   // Overview
   Overview: "نظرة عامة",
@@ -549,10 +562,15 @@ export const ar = {
   "Enabled user": "فعّل مستخدمًا",
   "Daily reminders ran": "تم تشغيل التذكيرات اليومية",
   "Weekly summary ran": "تم إرسال الملخص الأسبوعي",
+  "Monthly completed-projects report ran": "تم إرسال تقرير المشاريع المكتملة الشهري",
 
   // Automations
   Automations: "الأتمتة",
   "Email notifications and scheduled jobs run by n8n.": "إشعارات البريد والمهام المجدولة التي يشغّلها n8n.",
+  "Email notifications and scheduled jobs (daily, weekly, monthly).":
+    "إشعارات البريد والمهام المجدولة (يومية وأسبوعية وشهرية).",
+  "Emails go out through SMTP. Daily, weekly and monthly jobs run on Vercel at 8:00 and 9:00 Cairo time.":
+    "تُرسل الرسائل عبر SMTP. المهام اليومية والأسبوعية والشهرية تعمل على Vercel الساعة 8:00 و 9:00 بتوقيت القاهرة.",
   "Sender: {from}": "المرسل: {from}",
   "Last 7 days: {sent} sent, {failed} failed": "آخر 7 أيام: {sent} مُرسل، {failed} فشل",
   'Until the real sender is set, emails go to the local test inbox at http://localhost:8025. To switch, add the SMTP settings to dashboard/.env.local and run npm run n8n:setup, or edit the "Studio OS Email" credential in n8n.':
@@ -560,6 +578,7 @@ export const ar = {
   "Send me a test email": "أرسل لي بريدًا تجريبيًا",
   "Run daily reminders now": "شغّل التذكيرات اليومية الآن",
   "Send weekly summary now": "أرسل الملخص الأسبوعي الآن",
+  "Send this month's completed-projects report": "أرسل تقرير مشاريع هذا الشهر المكتملة",
   "Running…": "جارٍ التشغيل…",
   "n8n workflows": "مسارات n8n",
   "n8n is not reachable: {error}": "تعذر الوصول إلى n8n: {error}",
@@ -575,6 +594,7 @@ export const ar = {
   "Recent runs": "آخر عمليات التشغيل",
   Result: "النتيجة",
   "Email log": "سجل البريد",
+  "The last 30 emails sent.": "آخر 30 رسالة أُرسلت.",
   "The last 30 emails the dashboard handed to n8n.": "آخر 30 رسالة أرسلتها لوحة التحكم إلى n8n.",
   "No emails yet.": "لا توجد رسائل بعد.",
   To: "إلى",
@@ -903,4 +923,53 @@ export const ar = {
   "You can't reopen this item.": "لا يمكنك إعادة فتح هذا البند.",
   "{client} says it's not right yet: {project}": "يقول {client} إنه لم يصبح صحيحًا بعد: {project}",
   "Client's comment: {comment}": "تعليق العميل: {comment}",
+
+  // Project files (R2 + office disk)
+  Files: "الملفات",
+  Folder: "المجلد",
+  "Upload files": "رفع ملفات",
+  "Uploading…": "جارٍ الرفع…",
+  "Uploading {name} ({n} of {total})…": "جارٍ رفع {name} ({n} من {total})…",
+  "File uploaded.": "تم رفع الملف.",
+  "Files uploaded.": "تم رفع الملفات.",
+  "File removed.": "تم حذف الملف.",
+  "Copy link": "نسخ الرابط",
+  "Shared files live in cloud storage (R2). Heavy working files stay on the office disk.":
+    "الملفات المشتركة تُحفظ في التخزين السحابي (R2). ملفات العمل الثقيلة تبقى على قرص المكتب.",
+  "Used {used} of {max}.": "المستخدم {used} من {max}.",
+  "Office disk folder: {path}": "مجلد قرص المكتب: {path}",
+  "Uploads are off until R2 keys are added to .env.local. Folders still appear below.":
+    "الرفع متوقف حتى تُضاف مفاتيح R2 إلى .env.local. المجلدات تظهر بالأسفل.",
+  "{count} file(s)": "{count} ملف",
+  Empty: "فارغ",
+  "Office disk only": "قرص المكتب فقط",
+  "Copy Unreal, C4D and Premiere files here in Explorer. They are not uploaded to R2.":
+    "انسخ ملفات Unreal وC4D وPremiere هنا من المستكشف. لا تُرفع إلى R2.",
+  "Client assets": "ملفات العميل",
+  Brand: "الهوية",
+  Preview: "المعاينة",
+  Delivery: "التسليم",
+  "Working files (office disk)": "ملفات العمل (قرص المكتب)",
+  "3D (office disk)": "ثلاثي الأبعاد (قرص المكتب)",
+  "Edit (office disk)": "المونتاج (قرص المكتب)",
+  "Pick a file.": "اختر ملفًا.",
+  "Keep the file name short.": "اختصر اسم الملف.",
+  "The file name cannot contain a path.": "اسم الملف لا يمكن أن يحتوي على مسار.",
+  "Pick a folder.": "اختر مجلدًا.",
+  "Keep each file under 100 MB.": "أبقِ كل ملف أقل من 100 م.ب.",
+  "File storage is not set up yet. Add the R2 keys in .env.local.":
+    "تخزين الملفات غير مُعد بعد. أضف مفاتيح R2 إلى .env.local.",
+  "You cannot upload files to this project.": "لا يمكنك رفع ملفات إلى هذا المشروع.",
+  "The 10 GB storage limit is full. Delete old files or upgrade the R2 plan.":
+    "امتلأ حد التخزين 10 جيجابايت. احذف ملفات قديمة أو رقِّ خطة R2.",
+  "Could not start the upload. Check the R2 keys.": "تعذر بدء الرفع. تحقق من مفاتيح R2.",
+  "Invalid upload.": "رفع غير صالح.",
+  "The uploaded file does not match what was selected.": "الملف المرفوع لا يطابق ما تم اختياره.",
+  "The file did not arrive in storage. Try again.": "لم يصل الملف إلى التخزين. حاول مرة أخرى.",
+  "You cannot delete files on this project.": "لا يمكنك حذف ملفات هذا المشروع.",
+  "Could not create a link. Try again.": "تعذر إنشاء رابط. حاول مرة أخرى.",
+  "The upload to storage failed. Check R2 CORS for this site.": "فشل الرفع إلى التخزين. فعّل CORS في R2 لهذا الموقع.",
+  "Uploaded a project file": "رفع ملف مشروع",
+  "Removed a project file": "حذف ملف مشروع",
+  "File not found.": "الملف غير موجود.",
 } as const;

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { requireUser } from "@/lib/auth/session";
-import { runDaily, runWeekly } from "@/lib/automations";
+import { runDaily, runMonthly, runWeekly } from "@/lib/automations";
 import { sendEmails } from "@/lib/mail";
 import { getLocale } from "@/lib/i18n/server";
 import type { FormState } from "./auth";
@@ -12,7 +12,7 @@ import type { FormState } from "./auth";
 export async function runAutomation(_: FormState, formData: FormData): Promise<FormState> {
   const me = await requireUser();
   if (!me.isSuperAdmin) return { error: "Only the super admin can run automations." };
-  const job = z.enum(["daily", "weekly", "test"]).safeParse(formData.get("job"));
+  const job = z.enum(["daily", "weekly", "monthly", "test"]).safeParse(formData.get("job"));
   if (!job.success) return { error: "Unknown job." };
 
   let result: { sent: number; failed: number };
@@ -31,6 +31,8 @@ export async function runAutomation(_: FormState, formData: FormData): Promise<F
         }),
       },
     ]);
+  } else if (job.data === "monthly") {
+    result = await runMonthly("current");
   } else {
     result = await (job.data === "daily" ? runDaily() : runWeekly());
   }

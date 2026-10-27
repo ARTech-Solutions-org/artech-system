@@ -58,6 +58,8 @@ const ACTION_LABELS: Record<string, Msg> = {
   "feedback.client_reopen": "Client asked for more changes",
   "project.client_link_on": "Turned on the client link",
   "project.client_link_off": "Turned off the client link",
+  "file.upload": "Uploaded a project file",
+  "file.delete": "Removed a project file",
   "equipment_request.equipment_approved": "Equipment approved",
   "equipment_request.equipment_waitlisted": "Equipment waitlisted",
   "equipment_request.equipment_returned": "Equipment returned",
@@ -71,6 +73,7 @@ const ACTION_LABELS: Record<string, Msg> = {
   "user.reset_password": "Reset password",
   "automation.automation_daily": "Daily reminders ran",
   "automation.automation_weekly": "Weekly summary ran",
+  "automation.automation_monthly": "Monthly completed-projects report ran",
 };
 
 const ENTITY_FILTERS: { value: string; label: Msg; entities: string[] }[] = [

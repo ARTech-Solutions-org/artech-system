@@ -124,6 +124,10 @@ export const projects = pgTable(
     assignedAt: timestamp("assigned_at", { withTimezone: true }),
     // Secret part of the client's feedback link; null means the link is off.
     clientToken: text("client_token").unique(),
+    // Disk/R2 path like `2026/expo-booth-hologram-a1b2c3d4`. Set once and never renamed.
+    folderKey: text("folder_key").unique(),
+    // Set when status becomes completed; cleared if the project is reopened.
+    completedAt: timestamp("completed_at", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [uniqueIndex("projects_name_unique").on(sql`lower(${t.name})`), index("projects_status_idx").on(t.status)],
@@ -412,6 +416,28 @@ export const feedbackComments = pgTable(
 );
 
 // Outside companies we rent equipment from; `equipment` lists what we rent from each one.
+/** Files uploaded to R2. Working folders (09–11) stay on the office disk and are not stored here. */
+export const projectFiles = pgTable(
+  "project_files",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    folder: text("folder").notNull(),
+    objectKey: text("object_key").notNull().unique(),
+    name: text("name").notNull(),
+    size: integer("size").notNull(),
+    mime: text("mime"),
+    uploadedBy: uuid("uploaded_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("project_files_project_idx").on(t.projectId, t.folder),
+    check("project_files_size_positive", sql`${t.size} > 0`),
+  ],
+);
+
 export const suppliers = pgTable(
   "suppliers",
   {

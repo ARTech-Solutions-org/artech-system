@@ -11,6 +11,7 @@ import { REQUEST_STATUS_LABELS } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import {
   canAssign,
+  canCloseProject,
   canManageEquipment,
   canManageInstallation,
   canRequestEquipment,
@@ -85,6 +86,27 @@ export async function InstallationActions({ me, project }: Omit<Props, "isMember
   return (
     <Detail label={t("Next step")}>
       <StatusButtons projectId={project.id} moves={moves} />
+    </Detail>
+  );
+}
+
+/** Business Head closes the job after Operations marks it installed. */
+export async function CloseProjectActions({ me, project }: Omit<Props, "isMember">) {
+  const { t, fmt } = await getI18n();
+  if (project.status === "completed") {
+    return (
+      <Detail label={t("Completed")}>
+        <p className="text-sm">{project.completedAt ? fmt.dateTime(project.completedAt) : "—"}</p>
+      </Detail>
+    );
+  }
+  if (!canCloseProject(me) || project.status !== "installed") return null;
+  return (
+    <Detail label={t("Next step")}>
+      <StatusButtons projectId={project.id} moves={[{ to: "completed", label: t("Mark completed") }]} />
+      <p className="text-sm text-muted-foreground">
+        {t("Business marks the project completed after installation.")}
+      </p>
     </Detail>
   );
 }

@@ -20,7 +20,8 @@ import { requireUser } from "@/lib/auth/session";
 import { isUniqueViolation } from "@/lib/db-errors";
 import { CURRENCIES } from "@/lib/format";
 import { firstIssue } from "@/lib/i18n";
-import { notifyAssigned } from "@/lib/notify";
+import { makeFolderKey } from "@/lib/folder-names";
+import { notifyAssigned, notifyProjectFolders } from "@/lib/notify";
 import {
   canAssign,
   canEditBrief,
@@ -97,13 +98,19 @@ export async function createProject(_: FormState, formData: FormData): Promise<F
   const schedule = canEditInstallationDate(me) ? ScheduleSchema.safeParse(values) : null;
   if (schedule && !schedule.success) return { error: firstIssue(schedule.error), values };
 
-  let id: string;
+  let created: { id: string; folderKey: string | null };
   try {
-    id = await db.transaction(async (tx) => {
+    created = await db.transaction(async (tx) => {
+      const newId = crypto.randomUUID();
       const [created] = await tx
         .insert(projects)
-        .values({ ...brief.data, createdBy: me.id })
-        .returning({ id: projects.id });
+        .values({
+          id: newId,
+          ...brief.data,
+          createdBy: me.id,
+          folderKey: makeFolderKey(brief.data.name, new Date(), newId),
+        })
+        .returning({ id: projects.id, folderKey: projects.folderKey });
       if (finance?.data) {
         const f = finance.data;
         await tx.insert(projectFinance).values({
@@ -124,16 +131,17 @@ export async function createProject(_: FormState, formData: FormData): Promise<F
           updatedBy: me.id,
         });
       }
-      return created.id;
+      return created;
     });
   } catch (e) {
     if (isUniqueViolation(e)) return { error: "A project with this name already exists.", values };
     throw e;
   }
 
-  await audit({ userId: me.id, action: "create", entity: "project", entityId: id, changes: brief.data });
+  notifyProjectFolders({ id: created.id, name: brief.data.name, folderKey: created.folderKey! });
+  await audit({ userId: me.id, action: "create", entity: "project", entityId: created.id, changes: brief.data });
   refresh();
-  redirect(`/projects/${id}`);
+  redirect(`/projects/${created.id}`);
 }
 
 export async function updateBrief(_: FormState, formData: FormData): Promise<FormState> {

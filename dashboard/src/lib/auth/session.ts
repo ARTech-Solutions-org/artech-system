@@ -22,8 +22,8 @@ export async function createSession(userId: string) {
 
   (await cookies()).set(SESSION_COOKIE, token, {
     httpOnly: true,
-    // Requires HTTPS; enable once the dashboard is served over HTTPS.
-    secure: process.env.COOKIE_SECURE === "true",
+    // HTTPS only. Vercel always serves HTTPS; locally set COOKIE_SECURE=true after you switch to https.
+    secure: process.env.COOKIE_SECURE === "true" || Boolean(process.env.VERCEL),
     sameSite: "lax",
     path: "/",
     expires: expiresAt,

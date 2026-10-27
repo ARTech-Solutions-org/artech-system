@@ -55,7 +55,7 @@ const formValues = (formData: FormData) => Object.fromEntries(formData) as Recor
 
 const RequestSchema = z
   .object({
-    projectId: z.uuid("Invalid project."),
+    projectId: z.uuid("Pick a project."),
     equipmentId: z.uuid("Pick the equipment."),
     quantity: z.coerce.number().int("Whole units only.").min(1, "At least 1 unit."),
     neededFrom: optionalDate,

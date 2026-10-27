@@ -12,16 +12,18 @@ import { EQUIPMENT_STATUS_LABELS } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { canManageEquipment, canRequestEquipment } from "@/lib/permissions";
 import { projectHref } from "@/lib/project-tabs";
-import { EquipmentForm } from "../projects/work-forms";
+import { requestableProjects } from "@/lib/projects";
+import { EquipmentForm, NewEquipmentRequestButton, RequestEquipmentForm } from "../projects/work-forms";
 import { EditSection } from "../projects/[id]/project-ui";
 
 export default async function EquipmentPage() {
   const me = await requireUser();
   const manage = canManageEquipment(me);
-  if (!manage && !canRequestEquipment(me)) redirect("/");
+  const canRequest = canRequestEquipment(me);
+  if (!manage && !canRequest) redirect("/");
   const { t } = await getI18n();
 
-  const [items, holders] = await Promise.all([
+  const [items, holders, requestProjects] = await Promise.all([
     db
       .select({
         id: equipment.id,
@@ -48,14 +50,39 @@ export default async function EquipmentPage() {
       .innerJoin(projects, eq(projects.id, equipmentRequests.projectId))
       .where(inArray(equipmentRequests.status, ["approved", "waitlisted"]))
       .orderBy(asc(equipmentRequests.createdAt)),
+    canRequest ? requestableProjects(me) : Promise.resolve([]),
   ]);
+
+  const requestItems = items
+    .filter((i) => i.status !== "retired")
+    .map((i) => ({
+      id: i.id,
+      name: i.name,
+      code: i.code,
+      status: i.status,
+      free: i.status === "active" ? i.quantity - i.inUse : 0,
+    }));
 
   return (
     <div className="flex max-w-5xl flex-col gap-8">
       <PageHeader
         title={t("Equipment")}
-        description={t("Stock and who is using it. Request equipment from a project page.")}
+        description={t("Stock, who is using it, and request units for a project.")}
       />
+
+      {canRequest && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("Request equipment")}</CardTitle>
+            <CardDescription>
+              {t("Requests are approved automatically when enough units are free; otherwise they wait in line.")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RequestEquipmentForm projects={requestProjects} items={requestItems} />
+          </CardContent>
+        </Card>
+      )}
 
       {manage && (
         <Card>
@@ -127,6 +154,15 @@ export default async function EquipmentPage() {
                   </div>
                 )}
                 {item.notes && <p className="text-muted-foreground">{item.notes}</p>}
+                {canRequest && item.status !== "retired" && (
+                  <NewEquipmentRequestButton
+                    projects={requestProjects}
+                    items={requestItems}
+                    equipmentId={item.id}
+                    label={t("Request this item")}
+                    size="sm"
+                  />
+                )}
                 {manage && (
                   <EditSection label={t("Edit")}>
                     <EquipmentForm

@@ -65,6 +65,7 @@ export function SelectField({
   options,
   defaultValue,
   className,
+  required,
 }: {
   label: string;
   name: string;
@@ -72,12 +73,19 @@ export function SelectField({
   options: { value: string; label: string; disabled?: boolean }[];
   defaultValue?: string;
   className?: string;
+  required?: boolean;
 }) {
   const id = useId();
   return (
     <div className={`flex flex-col gap-1.5 ${className ?? ""}`}>
       <Label htmlFor={id}>{label}</Label>
-      <select id={id} name={name} defaultValue={values[name] ?? defaultValue} className={selectClass}>
+      <select
+        id={id}
+        name={name}
+        required={required}
+        defaultValue={values[name] ?? defaultValue}
+        className={selectClass}
+      >
         {options.map((o) => (
           <option key={o.value} value={o.value} disabled={o.disabled}>
             {o.label}

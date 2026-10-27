@@ -4,9 +4,12 @@ import { flags } from "@/db/schema";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/session";
+import { listCatalogForRequest } from "@/lib/equipment";
 import { countMyOpenFlags, flagPeople, flagProjects, loadFlags, visibleFlagsWhere } from "@/lib/flags";
 import { getI18n } from "@/lib/i18n/server";
-import { NewRequestButton } from "../projects/work-forms";
+import { canRequestEquipment } from "@/lib/permissions";
+import { requestableProjects } from "@/lib/projects";
+import { NewEquipmentRequestButton, NewRequestButton } from "../projects/work-forms";
 import { FlagCard, myOpenParts, toPeople } from "./flag-card";
 
 export default async function RequestsPage(props: PageProps<"/requests">) {
@@ -14,7 +17,8 @@ export default async function RequestsPage(props: PageProps<"/requests">) {
   const { t } = await getI18n();
   const showClosed = (await props.searchParams).view === "closed";
 
-  const [list, people, projects, waiting] = await Promise.all([
+  const canRequest = canRequestEquipment(me);
+  const [list, people, projects, waiting, catalog, equipmentProjects] = await Promise.all([
     showClosed
       ? loadFlags(
           and(ne(flags.status, "open"), gte(flags.resolvedAt, sql`now() - interval '90 days'`), visibleFlagsWhere(me)),
@@ -23,7 +27,16 @@ export default async function RequestsPage(props: PageProps<"/requests">) {
     flagPeople(me),
     flagProjects(me),
     countMyOpenFlags(me),
+    canRequest ? listCatalogForRequest() : Promise.resolve([]),
+    canRequest ? requestableProjects(me) : Promise.resolve([]),
   ]);
+  const requestItems = catalog.map((i) => ({
+    id: i.id,
+    name: i.name,
+    code: i.code,
+    status: i.status,
+    free: i.status === "active" ? i.quantity - i.inUse : 0,
+  }));
 
   const waitingOnMe = showClosed ? [] : list.filter((f) => myOpenParts(me, f).length > 0);
   const sentByMe = showClosed ? [] : list.filter((f) => !waitingOnMe.includes(f) && f.raisedBy === me.id);
@@ -61,7 +74,12 @@ export default async function RequestsPage(props: PageProps<"/requests">) {
       <PageHeader
         title={t("Requests")}
         description={t("Ask anyone on the team for something you need. They and their head get an email.")}
-        actions={<NewRequestButton projects={projects} people={toPeople(people)} />}
+        actions={
+          <>
+            {canRequest && <NewEquipmentRequestButton projects={equipmentProjects} items={requestItems} />}
+            <NewRequestButton projects={projects} people={toPeople(people)} />
+          </>
+        }
       />
 
       <div className="flex w-fit gap-6 border-b">

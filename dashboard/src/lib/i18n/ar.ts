@@ -222,6 +222,12 @@ export const ar = {
     "في الانتظار: المتاح الآن {free} فقط من {item}. سيُعتمد الطلب تلقائيًا عند إرجاع وحدات.",
   "Equipment not found.": "المعدة غير موجودة.",
   "You cannot request equipment for this project.": "لا يمكنك طلب معدات لهذا المشروع.",
+  "Pick a project.": "اختر مشروعًا.",
+  "You need to be assigned to a project before you can request equipment.":
+    "يجب أن تُكلَّف بمشروع قبل طلب المعدات.",
+  "Request this item": "طلب هذه المعدة",
+  "Stock, who is using it, and request units for a project.":
+    "المخزون ومن يستخدمه، واطلب وحدات لمشروع.",
   "Pick the equipment.": "اختر المعدة.",
   "Whole units only.": "أرقام صحيحة فقط.",
   "At least 1 unit.": "وحدة واحدة على الأقل.",

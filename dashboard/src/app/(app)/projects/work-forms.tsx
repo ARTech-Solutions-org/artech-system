@@ -12,7 +12,7 @@ import {
   saveInstallation,
   translateText,
 } from "@/app/actions/work";
-import { BellRing, Languages, Plus } from "lucide-react";
+import { BellRing, Languages, Package, Plus } from "lucide-react";
 import { useActionState, useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Field, SelectField, Submit, useForm, type Values } from "@/components/form-fields";
 import { FormMessage } from "@/components/form-message";
@@ -25,33 +25,93 @@ import { Textarea } from "@/components/ui/textarea";
 import { EQUIPMENT_STATUS_LABELS, FLAG_TYPE_LABELS } from "@/lib/format";
 import type { Locale, Msg } from "@/lib/i18n";
 
+type EquipmentItem = {
+  id: string;
+  name: string;
+  code: string;
+  free: number;
+  status: keyof typeof EQUIPMENT_STATUS_LABELS;
+};
+
+/** `projectId` fixes the project (project page); otherwise `projects` is a required picker. */
 export function RequestEquipmentForm({
   projectId,
+  projects,
   items,
+  equipmentId,
+  onSent,
 }: {
-  projectId: string;
-  items: { id: string; name: string; code: string; free: number; status: keyof typeof EQUIPMENT_STATUS_LABELS }[];
+  projectId?: string;
+  projects?: { id: string; name: string }[];
+  items: EquipmentItem[];
+  equipmentId?: string;
+  onSent?: () => void;
 }) {
   const { t } = useI18n();
-  const f = useForm(requestEquipment, { quantity: "1" });
+  const f = useForm(requestEquipment, { quantity: "1", equipmentId, projectId });
+  useEffect(() => {
+    if (f.state?.success) onSent?.();
+  }, [f.state, onSent]);
+
   if (!items.length) return <p className="text-sm text-muted-foreground">{t("No equipment in the inventory yet.")}</p>;
+  if (!projectId && !projects?.length) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        {t("You need to be assigned to a project before you can request equipment.")}
+      </p>
+    );
+  }
+
+  const picked = equipmentId ? items.find((i) => i.id === equipmentId) : undefined;
+
   return (
     <form key={f.key} action={f.formAction} className="grid gap-4 sm:grid-cols-4">
-      <input type="hidden" name="projectId" value={projectId} />
-      <SelectField
-        label={t("Equipment")}
-        name="equipmentId"
-        values={f.values}
-        className="sm:col-span-2"
-        options={items.map((i) => ({
-          value: i.id,
-          label: `${i.name} (${i.code}) — ${
-            i.status === "active" ? t("{count} free", { count: i.free }) : t(EQUIPMENT_STATUS_LABELS[i.status])
-          }`,
-        }))}
-      />
+      {projectId ? (
+        <input type="hidden" name="projectId" value={projectId} />
+      ) : (
+        <SelectField
+          label={t("Project")}
+          name="projectId"
+          values={f.values}
+          className="sm:col-span-2"
+          required
+          defaultValue=""
+          options={[
+            { value: "", label: t("Pick a project.") },
+            ...(projects ?? []).map((p) => ({ value: p.id, label: p.name })),
+          ]}
+        />
+      )}
+      {picked ? (
+        <>
+          <input type="hidden" name="equipmentId" value={picked.id} />
+          <div className="sm:col-span-2 flex flex-col justify-end text-sm">
+            <div className="font-medium">{picked.name}</div>
+            <div className="text-muted-foreground">
+              {picked.code} —{" "}
+              {picked.status === "active"
+                ? t("{count} free", { count: picked.free })
+                : t(EQUIPMENT_STATUS_LABELS[picked.status])}
+            </div>
+          </div>
+        </>
+      ) : (
+        <SelectField
+          label={t("Equipment")}
+          name="equipmentId"
+          values={f.values}
+          className="sm:col-span-2"
+          required
+          options={items.map((i) => ({
+            value: i.id,
+            label: `${i.name} (${i.code}) — ${
+              i.status === "active" ? t("{count} free", { count: i.free }) : t(EQUIPMENT_STATUS_LABELS[i.status])
+            }`,
+          }))}
+        />
+      )}
       <Field label={t("Quantity")} name="quantity" values={f.values} type="number" min={1} required />
-      <div />
+      {projectId && <div />}
       <Field label={t("Needed from (optional)")} name="neededFrom" values={f.values} type="date" />
       <Field label={t("Needed until (optional)")} name="neededUntil" values={f.values} type="date" />
       <Field label={t("Notes (optional)")} name="notes" values={f.values} className="sm:col-span-2" />
@@ -60,6 +120,27 @@ export function RequestEquipmentForm({
         <Submit pending={f.pending} label={t("Request")} pendingLabel={t("Requesting…")} />
       </div>
     </form>
+  );
+}
+
+export function NewEquipmentRequestButton({
+  label,
+  size,
+  ...props
+}: Omit<Parameters<typeof RequestEquipmentForm>[0], "onSent"> & { label?: string; size?: "default" | "sm" | "xs" }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  return (
+    <>
+      <Button variant="outline" size={size} onClick={() => setOpen(true)}>
+        <Package />
+        {label ?? t("Request equipment")}
+      </Button>
+      <Modal open={open} onClose={close} title={t("Request equipment")}>
+        <RequestEquipmentForm {...props} onSent={close} />
+      </Modal>
+    </>
   );
 }
 

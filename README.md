@@ -2,6 +2,8 @@
 
 Projects, team, equipment and installations dashboard. See `PLAN.md` for the roadmap.
 
+Staff handbook (how to use the system, not how to install it): [English PDF](docs/ARTECH-Studio-OS-Handbook-EN.pdf) · [PDF العربية](docs/ARTECH-Studio-OS-Handbook-AR.pdf)
+
 | Folder | Contents |
 |---|---|
 | `dashboard/` | Next.js app (UI, API, auth, permissions) |

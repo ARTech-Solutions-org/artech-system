@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, notInArray } from "drizzle-orm";
 import { db } from "@/db";
 import { projectMembers, projects, users } from "@/db/schema";
 import { canSeeAllProjects, type Viewer } from "@/lib/permissions";
@@ -28,6 +28,21 @@ export async function getVisibleProject(me: Viewer, projectId: string) {
 export async function projectExists(projectId: string): Promise<boolean> {
   const [row] = await db.select({ id: projects.id }).from(projects).where(eq(projects.id, projectId));
   return !!row;
+}
+
+/** Active projects the viewer can request equipment for. Developers only see jobs they are on. */
+export function requestableProjects(me: Viewer) {
+  const mine = db.select({ id: projectMembers.projectId }).from(projectMembers).where(eq(projectMembers.userId, me.id));
+  return db
+    .select({ id: projects.id, name: projects.name })
+    .from(projects)
+    .where(
+      and(
+        notInArray(projects.status, ["cancelled", "completed"]),
+        canSeeAllProjects(me) ? undefined : inArray(projects.id, mine),
+      ),
+    )
+    .orderBy(asc(projects.name));
 }
 
 function listActive(department: "development" | "operations") {

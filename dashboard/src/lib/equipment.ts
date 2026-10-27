@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { equipment, equipmentRequests } from "@/db/schema";
 
@@ -10,6 +10,22 @@ export const inUseQuantity = sql<number>`coalesce((
   select sum(er.quantity) from equipment_requests er
   where er.equipment_id = "equipment"."id" and er.status = 'approved'
 ), 0)::int`;
+
+/** Active catalogue rows for the request form (retired items are hidden). */
+export function listCatalogForRequest() {
+  return db
+    .select({
+      id: equipment.id,
+      name: equipment.name,
+      code: equipment.code,
+      status: equipment.status,
+      quantity: equipment.quantity,
+      inUse: inUseQuantity,
+    })
+    .from(equipment)
+    .where(ne(equipment.status, "retired"))
+    .orderBy(asc(equipment.name));
+}
 
 async function lockAndCountFree(tx: Tx, equipmentId: string) {
   // Row lock serializes concurrent requests for the same item so stock can't be double-booked.

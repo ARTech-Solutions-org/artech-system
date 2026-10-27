@@ -1,4 +1,6 @@
 .env
 backups/
 node_modules/
-projects/
+# Office-disk project folders at the repo root. Do not use a bare `projects/` — that also
+# ignores Next.js routes under dashboard/src/app/(app)/projects/.
+/projects/

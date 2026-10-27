@@ -24,21 +24,43 @@ function recognitionCtor(): RecognitionCtor | undefined {
 
 const LANGS = { en: "en-US", ar: "ar-EG" } as const;
 type Lang = keyof typeof LANGS;
+const LANG_KEY = "studio-os-dictate-lang";
+
+function savedLang(): Lang {
+  if (typeof window === "undefined") return "ar";
+  const saved = window.localStorage.getItem(LANG_KEY);
+  return saved === "en" || saved === "ar" ? saved : "ar";
+}
+
+function writeValue(el: HTMLInputElement | HTMLTextAreaElement, value: string) {
+  el.value = value;
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}
 
 /** Speech-to-text into an uncontrolled input/textarea. Hidden in browsers without speech recognition (Firefox). */
 export function DictateButton({ target }: { target: React.RefObject<HTMLInputElement | HTMLTextAreaElement | null> }) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const supported = useSyncExternalStore(
     () => () => {},
     () => !!recognitionCtor(),
     () => false,
   );
-  const [lang, setLang] = useState<Lang>(locale === "ar" ? "ar" : "en");
+  // Arabic first: Chrome's English model keeps numbers and dictionary words, and drops names like Talabat.
+  const [lang, setLang] = useState<Lang>(savedLang);
   const [listening, setListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const rec = useRef<Recognition | null>(null);
 
   useEffect(() => () => rec.current?.stop(), []);
+
+  function pickLang(next: Lang) {
+    setLang(next);
+    try {
+      window.localStorage.setItem(LANG_KEY, next);
+    } catch {
+      /* private mode */
+    }
+  }
 
   if (!supported) return null;
 
@@ -61,7 +83,7 @@ export function DictateButton({ target }: { target: React.RefObject<HTMLInputEle
         if (e.results[i].isFinal) base = join(base, said);
         else interim = join(interim, said);
       }
-      el.value = join(base, interim);
+      writeValue(el, join(base, interim));
       el.scrollTop = el.scrollHeight;
     };
     r.onerror = (e) => {
@@ -70,7 +92,7 @@ export function DictateButton({ target }: { target: React.RefObject<HTMLInputEle
       else if (e.error !== "no-speech" && e.error !== "aborted") setError(t("Dictation stopped. Try again."));
     };
     r.onend = () => {
-      el.value = base;
+      writeValue(el, base);
       setListening(false);
       rec.current = null;
     };
@@ -84,7 +106,7 @@ export function DictateButton({ target }: { target: React.RefObject<HTMLInputEle
     <span className="inline-flex items-center gap-1">
       <button
         type="button"
-        onClick={() => setLang(lang === "en" ? "ar" : "en")}
+        onClick={() => pickLang(lang === "en" ? "ar" : "en")}
         disabled={listening}
         title={t("Dictation language")}
         className="rounded border px-1.5 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"

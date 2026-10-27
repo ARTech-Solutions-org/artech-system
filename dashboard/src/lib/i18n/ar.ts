@@ -336,11 +336,16 @@ export const ar = {
   // Finance
   "Hidden from developers and Operations.": "مخفي عن المطورين وفريق العمليات.",
   Received: "المستلم",
+  Revenue: "الإيراد",
+  Profit: "الربح",
   Outstanding: "المتبقي",
   Expenses: "المصروفات",
+  "Revenue is collections only. It stays at zero until a payment is recorded. Profit is revenue minus expenses.":
+    "الإيراد هو التحصيل فقط. يبقى صفرًا حتى تسجيل دفعة. الربح هو الإيراد ناقص المصروفات.",
   Budgets: "الميزانيات",
   "Also recorded in other currencies (not included above):": "مسجل أيضًا بعملات أخرى (غير محسوب أعلاه):",
   "{received} received, {expenses} expenses": "{received} مستلم، {expenses} مصروفات",
+  "{revenue} revenue, {expenses} expenses, {profit} profit": "{revenue} إيراد، {expenses} مصروفات، {profit} ربح",
   "Budget notes": "ملاحظات الميزانية",
   "Edit budget": "تعديل الميزانية",
   "Set budget": "تحديد الميزانية",
@@ -362,6 +367,10 @@ export const ar = {
   "Reference (optional)": "المرجع (اختياري)",
   "Invoice / receipt no.": "رقم الفاتورة / الإيصال",
   "Add entry": "إضافة القيد",
+  "To save ({count})": "للحفظ ({count})",
+  "Add at least one entry.": "أضف قيدًا واحدًا على الأقل.",
+  "Too many entries at once.": "عدد القيود كبير جدًا.",
+  "{count} entries saved.": "تم حفظ {count} قيود.",
   "Payment recorded.": "تم تسجيل الدفعة.",
   "Expense recorded.": "تم تسجيل المصروف.",
   "Only Accounting can record payments and expenses.": "قسم الحسابات فقط يمكنه تسجيل المدفوعات والمصروفات.",
@@ -369,7 +378,10 @@ export const ar = {
   "Enter an amount like 15000 or 15000.50.": "أدخل مبلغًا مثل 15000 أو 15000.50.",
   "Describe the entry.": "اكتب وصف القيد.",
   "Budgets, payments received and expenses for every project.": "الميزانيات والمدفوعات المستلمة والمصروفات لكل مشروع.",
+  "Budget is the agreed amount. Revenue is what was collected. Profit is revenue minus expenses.":
+    "الميزانية هي المبلغ المتفق عليه. الإيراد هو ما حُصّل. الربح هو الإيراد ناقص المصروفات.",
   "Net (received − expenses)": "الصافي (المستلم − المصروفات)",
+  "Profit (revenue − expenses)": "الربح (الإيراد − المصروفات)",
   "Also has {currencies} entries": "يوجد أيضًا قيود بـ {currencies}",
 
   // Assignments
@@ -384,6 +396,7 @@ export const ar = {
   "Active projects per developer, nearest deadline first.": "المشاريع النشطة لكل مطور، الأقرب موعدًا أولًا.",
   "No developers yet. Add them from Users.": "لا يوجد مطورون بعد. أضفهم من صفحة المستخدمين.",
   "{count} active project(s)": "{count} مشروع نشط",
+  "No active projects.": "لا توجد مشاريع نشطة.",
 
   // Users
   "Add member": "إضافة عضو",
@@ -706,6 +719,8 @@ export const ar = {
   "Reminder for your team: {title}": "تذكير لفريقك: {title}",
   "{by} is still waiting on {names} since {date}:": "ما زال {by} بانتظار {names} منذ {date}:",
   Navigation: "القائمة",
+  "Live the experience": "عِش التجربة",
+  Studio: "الاستوديو",
   Suppliers: "الموردون",
   "Add supplier": "إضافة مورد",
   "Added a supplier": "أضاف موردًا",
@@ -733,6 +748,8 @@ export const ar = {
   "Remove supplier": "حذف المورد",
   "Supplier not found.": "المورد غير موجود.",
   "Supplier removed.": "تم حذف المورد.",
+
+  Feedback: "الملاحظات",
 
   // Client feedback
   "Client feedback": "ملاحظات العميل",

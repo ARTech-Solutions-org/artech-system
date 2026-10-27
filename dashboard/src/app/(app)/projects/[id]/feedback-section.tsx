@@ -114,7 +114,7 @@ export async function FeedbackSection({
           {chips.map((c) => (
             <div
               key={c.label}
-              className={`rounded-lg border px-3 py-2 ${c.alert ? "border-amber-500/50 bg-amber-500/10" : ""}`}
+              className={`border px-3 py-2 ${c.alert ? "border-amber-500/50 bg-amber-500/10" : ""}`}
             >
               <div className="text-xl font-semibold tabular-nums">{c.value}</div>
               <div className="text-xs text-muted-foreground">{c.label}</div>
@@ -123,7 +123,7 @@ export async function FeedbackSection({
         </div>
 
         {deadlineAsks.length > 0 && canAssign(me) && (
-          <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm">
+          <p className="border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm">
             {t("{count} item(s) ask for more time on the dev deadline. Decide below.", { count: deadlineAsks.length })}
           </p>
         )}
@@ -217,7 +217,7 @@ async function ItemCard({
   return (
     <div
       id={`feedback-${i.id}`}
-      className={`flex flex-col gap-3 rounded-lg border p-3 ${urgent ? "border-destructive/40" : ""} ${
+      className={`flex flex-col gap-3 border p-3 ${urgent ? "border-destructive/40" : ""} ${
         i.status === "rejected" ? "opacity-70" : ""
       }`}
     >

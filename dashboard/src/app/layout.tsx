@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, IBM_Plex_Sans_Arabic } from "next/font/google";
+import { Geist, Geist_Mono, IBM_Plex_Sans_Arabic, Syne } from "next/font/google";
 import { I18nProvider } from "@/components/i18n-provider";
 import { getI18n } from "@/lib/i18n/server";
 import "./globals.css";
@@ -12,6 +12,12 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const syne = Syne({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 const plexArabic = IBM_Plex_Sans_Arabic({
@@ -31,7 +37,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang={locale}
       dir={dir}
-      className={`${geistSans.variable} ${geistMono.variable} ${plexArabic.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${syne.variable} ${plexArabic.variable} dark h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <I18nProvider locale={locale}>{children}</I18nProvider>

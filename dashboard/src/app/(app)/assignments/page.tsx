@@ -1,14 +1,14 @@
 import { asc, eq, inArray } from "drizzle-orm";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { projectMembers, projects, projectSchedule } from "@/db/schema";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PageHeader } from "@/components/page-header";
+import { ProjectCard } from "@/components/project-card";
 import { requireUser } from "@/lib/auth/session";
 import { ACTIVE_STATUSES, PROJECT_STATUS_LABELS } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { canAssign } from "@/lib/permissions";
+import { projectHref } from "@/lib/project-tabs";
 import { listDevelopers } from "@/lib/projects";
 
 export default async function AssignmentsPage() {
@@ -33,9 +33,9 @@ export default async function AssignmentsPage() {
     db
       .select({
         userId: projectMembers.userId,
-        role: projectMembers.role,
         projectId: projects.id,
         name: projects.name,
+        clientName: projects.clientName,
         status: projects.status,
         devDeadline: projects.devDeadline,
       })
@@ -46,89 +46,87 @@ export default async function AssignmentsPage() {
   ]);
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">{t("Assignments")}</h1>
-        <p className="text-muted-foreground">{t("New briefs waiting for developers, and who is working on what.")}</p>
-      </div>
+    <div className="flex max-w-6xl flex-col gap-10">
+      <PageHeader
+        title={t("Assignments")}
+        description={t("New briefs waiting for developers, and who is working on what.")}
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("Waiting for assignment ({count})", { count: queue.length })}</CardTitle>
-          <CardDescription>{t("Open a brief to assign developers, set the deadline and milestones.")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {queue.length === 0 ? (
-            <p className="py-4 text-center text-muted-foreground">{t("No briefs waiting.")}</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("Project")}</TableHead>
-                  <TableHead>{t("Client")}</TableHead>
-                  <TableHead>{t("Submitted")}</TableHead>
-                  <TableHead>{t("Installation")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {queue.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">
-                      <Link href={`/projects/${p.id}`} className="underline-offset-4 hover:underline">
-                        {p.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{p.clientName ?? "—"}</TableCell>
-                    <TableCell>{fmt.dateTime(p.createdAt)}</TableCell>
-                    <TableCell>{fmt.date(p.installationDate)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <section className="flex flex-col gap-4">
+        <div>
+          <h2 className="font-heading text-xl font-semibold tracking-tight">
+            {t("Waiting for assignment ({count})", { count: queue.length })}
+          </h2>
+          <p className="page-lede">{t("Open a brief to assign developers, set the deadline and milestones.")}</p>
+        </div>
+        {queue.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-border bg-card py-12 text-center text-muted-foreground">
+            {t("No briefs waiting.")}
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {queue.map((p) => (
+              <ProjectCard
+                key={p.id}
+                href={projectHref(p.id, "development")}
+                name={p.name}
+                client={p.clientName}
+                statusLabel={t("Brief submitted")}
+                statusVariant="outline"
+                meta={[
+                  { label: t("Submitted"), value: fmt.dateTime(p.createdAt) },
+                  { label: t("Installation"), value: fmt.date(p.installationDate) },
+                ]}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("Team workload")}</CardTitle>
-          <CardDescription>{t("Active projects per developer, nearest deadline first.")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {developers.length === 0 ? (
-            <p className="py-4 text-center text-muted-foreground">{t("No developers yet. Add them from Users.")}</p>
-          ) : (
-            <ul className="divide-y">
-              {developers.map((d) => {
-                const work = active.filter((a) => a.userId === d.id);
-                return (
-                  <li key={d.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="font-medium">
-                      {d.name}
-                      {d.isHead && <span className="font-normal text-muted-foreground"> ({t("Tech Head")})</span>}
-                      <div className="text-sm font-normal text-muted-foreground">
-                        {t("{count} active project(s)", { count: work.length })}
-                      </div>
-                    </div>
-                    <ul className="flex flex-col gap-1 text-sm sm:items-end">
-                      {work.map((w) => (
-                        <li key={w.projectId} className="flex items-center gap-2">
-                          <Link href={`/projects/${w.projectId}`} className="underline-offset-4 hover:underline">
-                            {w.name}
-                          </Link>
-                          <span className="text-muted-foreground">
-                            {t(PROJECT_STATUS_LABELS[w.status])} · {t("Due {date}", { date: fmt.date(w.devDeadline) })}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      <section className="flex flex-col gap-8">
+        <div>
+          <h2 className="font-heading text-xl font-semibold tracking-tight">{t("Team workload")}</h2>
+          <p className="page-lede">{t("Active projects per developer, nearest deadline first.")}</p>
+        </div>
+        {developers.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-border bg-card py-12 text-center text-muted-foreground">
+            {t("No developers yet. Add them from Users.")}
+          </p>
+        ) : (
+          developers.map((d) => {
+            const work = active.filter((a) => a.userId === d.id);
+            return (
+              <div key={d.id} className="flex flex-col gap-4">
+                <div>
+                  <h3 className="font-heading text-lg font-semibold tracking-tight">
+                    {d.name}
+                    {d.isHead && <span className="ms-2 text-sm font-normal text-muted-foreground">{t("Tech Head")}</span>}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">{t("{count} active project(s)", { count: work.length })}</p>
+                </div>
+                {work.length === 0 ? (
+                  <p className="rounded-2xl border border-dashed border-border bg-card py-10 text-center text-sm text-muted-foreground">
+                    {t("No active projects.")}
+                  </p>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {work.map((w) => (
+                      <ProjectCard
+                        key={w.projectId}
+                        href={projectHref(w.projectId, "development")}
+                        name={w.name}
+                        client={w.clientName}
+                        statusLabel={t(PROJECT_STATUS_LABELS[w.status])}
+                        meta={[{ label: t("Dev deadline"), value: fmt.date(w.devDeadline) }]}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </section>
     </div>
   );
 }

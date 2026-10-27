@@ -63,13 +63,16 @@ export default async function ClientFeedbackPage({ params }: PageProps<"/c/[toke
   const ready = items.filter((i) => i.status === "done").length;
 
   return (
-    <main className="flex flex-1 flex-col items-center gap-6 bg-brand-black p-4 sm:p-8">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/artech-logo-white.png" alt="ARTECH, Live the experience" className="w-48 max-w-full" />
+    <main className="flex flex-1 flex-col items-center gap-8 bg-brand-black p-4 sm:p-10">
+      <div className="flex flex-col items-center gap-3">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/artech-logo-white.png" alt="ARTECH, Live the experience" className="w-48 max-w-full" />
+        <p className="text-[10px] font-medium tracking-[0.32em] text-white/45 uppercase">{t("Studio")}</p>
+      </div>
       <div className="flex w-full max-w-2xl flex-col gap-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl">{project.name}</CardTitle>
+            <CardTitle className="text-xl font-light tracking-tight">{project.name}</CardTitle>
             <CardDescription>
               {project.clientName ? `${project.clientName} · ` : ""}
               {t("Send us your comments and follow every change you asked for.")}
@@ -98,7 +101,7 @@ export default async function ClientFeedbackPage({ params }: PageProps<"/c/[toke
                 return (
                   <div
                     key={i.id}
-                    className={`flex flex-col gap-2 rounded-lg border p-3 ${
+                    className={`flex flex-col gap-2 border p-3 ${
                       i.status === "done" ? "border-violet-500/50 bg-violet-500/5" : ""
                     } ${i.status === "rejected" ? "opacity-60" : ""}`}
                   >

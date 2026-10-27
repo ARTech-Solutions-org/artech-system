@@ -3,6 +3,7 @@ import { Building2, MapPin, Phone, Search, User } from "lucide-react";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { suppliers } from "@/db/schema";
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { requireUser } from "@/lib/auth/session";
@@ -36,14 +37,12 @@ export default async function SuppliersPage(props: PageProps<"/suppliers">) {
     .orderBy(asc(suppliers.companyName));
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">{t("Suppliers")}</h1>
-          <p className="text-muted-foreground">{t("Companies we rent equipment from, and how to reach them.")}</p>
-        </div>
-        <AddSupplierButton />
-      </div>
+    <div className="flex max-w-5xl flex-col gap-8">
+      <PageHeader
+        title={t("Suppliers")}
+        description={t("Companies we rent equipment from, and how to reach them.")}
+        actions={<AddSupplierButton />}
+      />
 
       <form className="relative max-w-sm">
         <Search className="pointer-events-none absolute start-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

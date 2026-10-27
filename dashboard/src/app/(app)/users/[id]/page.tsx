@@ -5,6 +5,7 @@ import { z } from "zod";
 import { setUserStatus } from "@/app/actions/users";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,18 +39,22 @@ export default async function UserPage({ params }: PageProps<"/users/[id]">) {
   const isSelf = user.id === me.id;
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <div>
+    <div className="flex max-w-3xl flex-col gap-8">
+      <div className="flex flex-col gap-2">
         <Link href="/users" className="text-sm text-muted-foreground hover:underline">
           {t("← Users")}
         </Link>
-        <h1 className="mt-1 flex items-center gap-3 text-2xl font-semibold">
-          {user.name}
-          <Badge variant={user.status === "active" ? "secondary" : "destructive"}>
-            {t(USER_STATUS_LABELS[user.status])}
-          </Badge>
-        </h1>
-        <p className="text-muted-foreground">{t(roleTitle(user))}</p>
+        <PageHeader
+          title={
+            <span className="inline-flex flex-wrap items-center gap-3">
+              {user.name}
+              <Badge variant={user.status === "active" ? "secondary" : "destructive"}>
+                {t(USER_STATUS_LABELS[user.status])}
+              </Badge>
+            </span>
+          }
+          description={t(roleTitle(user))}
+        />
       </div>
 
       <Card>

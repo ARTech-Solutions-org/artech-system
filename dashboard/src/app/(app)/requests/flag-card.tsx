@@ -6,6 +6,7 @@ import type { LoadedFlag, flagPeople } from "@/lib/flags";
 import { FLAG_TYPE_LABELS } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { canCancelFlag, canResolveFlagPart, roleTitle, type Viewer } from "@/lib/permissions";
+import { projectHref } from "@/lib/project-tabs";
 import { CancelFlagForm, RemindFlagForm, ResolveFlagForm } from "../projects/work-forms";
 
 export const toPeople = (rows: Awaited<ReturnType<typeof flagPeople>>): Person[] =>
@@ -34,7 +35,7 @@ export async function FlagCard({
   return (
     <div
       id={`flag-${f.id}`}
-      className={`flex flex-col gap-3 rounded-lg border p-3 ${open ? "border-destructive/30 bg-destructive/5" : ""}`}
+      className={`flex flex-col gap-3 border p-4 ${open ? "border-destructive/30 bg-destructive/5" : ""}`}
     >
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <Badge variant={open ? "destructive" : "outline"}>{t(FLAG_TYPE_LABELS[f.type])}</Badge>
@@ -42,7 +43,10 @@ export async function FlagCard({
         {f.status === "resolved" && <Badge variant="secondary">{t("Resolved")}</Badge>}
         {showProject &&
           (f.projectId ? (
-            <Link href={`/projects/${f.projectId}`} className="font-medium underline-offset-4 hover:underline">
+            <Link
+              href={projectHref(f.projectId, "requests", `flag-${f.id}`)}
+              className="font-medium underline-offset-4 hover:underline"
+            >
               {f.projectName}
             </Link>
           ) : (

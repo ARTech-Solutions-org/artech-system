@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { equipment, equipmentRequests, projects } from "@/db/schema";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/session";
@@ -10,6 +11,7 @@ import { inUseQuantity } from "@/lib/equipment";
 import { EQUIPMENT_STATUS_LABELS } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { canManageEquipment, canRequestEquipment } from "@/lib/permissions";
+import { projectHref } from "@/lib/project-tabs";
 import { EquipmentForm } from "../projects/work-forms";
 import { EditSection } from "../projects/[id]/project-ui";
 
@@ -49,13 +51,11 @@ export default async function EquipmentPage() {
   ]);
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">{t("Equipment")}</h1>
-        <p className="text-muted-foreground">
-          {t("Stock and who is using it. Request equipment from a project page.")}
-        </p>
-      </div>
+    <div className="flex max-w-5xl flex-col gap-8">
+      <PageHeader
+        title={t("Equipment")}
+        description={t("Stock and who is using it. Request equipment from a project page.")}
+      />
 
       {manage && (
         <Card>
@@ -92,16 +92,16 @@ export default async function EquipmentPage() {
               </CardHeader>
               <CardContent className="flex flex-col gap-3 text-sm">
                 <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded-lg border p-2">
+                  <div className="border p-2">
                     <div className="text-lg font-semibold">{item.quantity}</div>
                     <div className="text-xs text-muted-foreground">{t("Total")}</div>
                   </div>
-                  <div className="rounded-lg border p-2">
+                  <div className="border p-2">
                     <div className="text-lg font-semibold">{item.inUse}</div>
                     <div className="text-xs text-muted-foreground">{t("In use")}</div>
                   </div>
-                  <div className="rounded-lg border p-2">
-                    <div className={`text-lg font-semibold ${free <= 0 ? "text-destructive" : "text-green-600"}`}>
+                  <div className="border p-2">
+                    <div className={`text-lg font-semibold ${free <= 0 ? "text-destructive" : "text-emerald-400"}`}>
                       {Math.max(free, 0)}
                     </div>
                     <div className="text-xs text-muted-foreground">{t("Free")}</div>
@@ -113,7 +113,7 @@ export default async function EquipmentPage() {
                     {using.map((h, i) => (
                       <span key={`${h.projectId}-${i}`}>
                         {i > 0 && " · "}
-                        <Link href={`/projects/${h.projectId}`} className="underline-offset-4 hover:underline">
+                        <Link href={projectHref(h.projectId, "equipment")} className="underline-offset-4 hover:underline">
                           {h.projectName}
                         </Link>{" "}
                         ({h.quantity})

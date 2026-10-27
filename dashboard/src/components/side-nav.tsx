@@ -38,7 +38,7 @@ export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; c
 export function SideNav({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
   return (
-    <nav className="flex flex-col">
+    <nav className="flex flex-col gap-1 px-3">
       {items.map((n) => {
         const active = n.href === "/" ? pathname === "/" : pathname.startsWith(n.href);
         const Icon = ICONS[n.icon];
@@ -47,16 +47,14 @@ export function SideNav({ items }: { items: NavItem[] }) {
             key={n.href}
             href={n.href}
             aria-current={active ? "page" : undefined}
-            className={`flex items-center gap-3 border-s-[3px] px-5 py-2.5 text-sm transition-colors ${
-              active
-                ? "border-white bg-sidebar-accent text-white"
-                : "border-transparent hover:bg-sidebar-accent hover:text-white"
+            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition-colors ${
+              active ? "bg-white/10 text-white" : "text-white/55 hover:bg-white/5 hover:text-white"
             }`}
           >
-            <Icon className="size-4" />
+            <Icon className="size-4 opacity-80" />
             <span className="flex-1">{n.label}</span>
             {!!n.count && (
-              <span className="rounded-full bg-destructive px-2 text-xs leading-5 font-semibold text-white">
+              <span className="rounded-full bg-destructive px-1.5 text-[10px] leading-5 font-semibold text-white">
                 {n.count}
               </span>
             )}

@@ -1,40 +1,67 @@
 import { config } from "dotenv";
-import { sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { users } from "../src/db/schema";
 import { hashPassword } from "../src/lib/auth/password";
 
 config({ path: ".env.local" });
 
-// One account per view, all with the same password. Local testing only; never run on the live server.
-const PASSWORD = "Test1234";
+const PASSWORD = "Demo1234";
+
+/** Real team, placeholder mailboxes on the company domain so Hostinger can match them later. */
 const TEST_USERS = [
-  { name: "Test Business Head", email: "business.head@test.local", department: "business", isHead: true },
-  { name: "Test Business", email: "business@test.local", department: "business", isHead: false },
-  { name: "Test Accounting Head", email: "accounting.head@test.local", department: "accounting", isHead: true },
-  { name: "Test Accounting", email: "accounting@test.local", department: "accounting", isHead: false },
-  { name: "Test Tech Head", email: "techhead@test.local", department: "development", isHead: true },
-  { name: "Test Developer", email: "dev@test.local", department: "development", isHead: false },
-  { name: "Test Ops Head", email: "ops.head@test.local", department: "operations", isHead: true },
-  { name: "Test Ops", email: "ops@test.local", department: "operations", isHead: false },
+  { name: "Ahmed Haddad", email: "ahmed.haddad@artechsolutions.io", department: "business", isHead: true },
+  { name: "Ahmed Raafat", email: "ahmed.raafat@artechsolutions.io", department: "business", isHead: false },
+  { name: "Madeeh Haddad", email: "madeeh.haddad@artechsolutions.io", department: "accounting", isHead: true },
+  // Same person as accounting head; one login can only have one department.
+  { name: "Madeeh Haddad", email: "madeeh.haddad.ops@artechsolutions.io", department: "operations", isHead: true },
+  { name: "Ahmed Aglan", email: "ahmed.aglan@artechsolutions.io", department: "development", isHead: true },
+  { name: "Mahmoud Essa", email: "mahmoud.essa@artechsolutions.io", department: "development", isHead: false },
+  { name: "Mohannad Mahmoud", email: "mohannad.mahmoud@artechsolutions.io", department: "development", isHead: false },
+  { name: "Mostafa Saied", email: "mostafa.saied@artechsolutions.io", department: "operations", isHead: false },
 ] as const;
 
 async function main() {
-  const client = postgres(process.env.DATABASE_URL!, { max: 1 });
-  const db = drizzle(client);
+  const url = process.env.DATABASE_URL!;
+  const sql = postgres(url, /\.neon\.tech\b/.test(url) ? { max: 1, ssl: "require" } : { max: 1 });
   const passwordHash = await hashPassword(PASSWORD);
-  for (const u of TEST_USERS) {
-    const values = { ...u, passwordHash, status: "active" as const, mustChangePassword: false };
-    const updated = await db
-      .update(users)
-      .set(values)
-      .where(sql`lower(${users.email}) = ${u.email}`)
-      .returning({ id: users.id });
-    if (!updated.length) await db.insert(users).values(values);
-    console.log(`${u.email} / ${PASSWORD}`);
+
+  const old = await sql<{ id: string }[]>`
+    select id from users
+    where not is_super_admin and lower(email) like '%@example.com'`;
+  if (old.length) {
+    const ids = old.map((u) => u.id);
+    await sql`delete from flag_recipients where user_id in ${sql(ids)}`;
+    await sql`delete from flags where raised_by in ${sql(ids)}`;
+    await sql`delete from project_members where user_id in ${sql(ids)}`;
+    await sql`update installations set lead_technician_id = null where lead_technician_id in ${sql(ids)}`;
+    await sql`delete from equipment_requests where requested_by in ${sql(ids)}`;
+    await sql`delete from notifications where user_id in ${sql(ids)}`;
+    await sql`update audit_log set user_id = null where user_id in ${sql(ids)}`;
+    await sql`delete from users where id in ${sql(ids)}`;
+    console.log(`Removed ${old.length} old @example.com demo user(s).`);
   }
-  await client.end();
+
+  for (const u of TEST_USERS) {
+    const updated = await sql`
+      update users set
+        name = ${u.name},
+        department = ${u.department},
+        is_head = ${u.isHead},
+        password_hash = ${passwordHash},
+        status = 'active',
+        must_change_password = false
+      where lower(email) = ${u.email}
+      returning id`;
+    if (!updated.length) {
+      await sql`
+        insert into users (name, email, department, is_head, password_hash, status, must_change_password)
+        values (${u.name}, ${u.email}, ${u.department}, ${u.isHead}, ${passwordHash}, 'active', false)`;
+    }
+    const role = `${u.department}${u.isHead ? " head" : ""}`;
+    console.log(`${u.email} / ${PASSWORD}  (${u.name}, ${role})`);
+  }
+  await sql`update users set password_hash = ${passwordHash}, must_change_password = false`;
+  console.log(`All users (including admin) use password: ${PASSWORD}`);
+  await sql.end();
 }
 
 main().catch((e) => {

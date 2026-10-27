@@ -21,13 +21,16 @@ import {
   users,
 } from "@/db/schema";
 import { LinkedText } from "@/components/linked-text";
+import { PageHeader } from "@/components/page-header";
+import { ProjectTabs } from "@/components/project-tabs";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/lib/auth/session";
-import { outstanding, totalsByCurrency } from "@/lib/finance";
+import { outstanding, profitOf, revenueOf, totalsByCurrency } from "@/lib/finance";
 import { PROJECT_STATUS_LABELS } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
+import { defaultProjectTab, resolveProjectTab, visibleProjectTabs } from "@/lib/project-tabs";
 import {
   canAssign,
   canEditBrief,
@@ -56,7 +59,7 @@ import {
 } from "../project-forms";
 import { InstallationForm } from "../work-forms";
 
-export default async function ProjectPage({ params }: PageProps<"/projects/[id]">) {
+export default async function ProjectPage({ params, searchParams }: PageProps<"/projects/[id]">) {
   const me = await requireUser();
   const { t, fmt } = await getI18n();
   const id = z.uuid().safeParse((await params).id);
@@ -70,6 +73,8 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
   const assign = canAssign(me);
   const work = canWorkOnProject(me, isMember);
   const operate = canManageInstallation(me);
+  const tabs = visibleProjectTabs({ showFinance, showSchedule });
+  const tab = resolveProjectTab((await searchParams).tab, tabs, defaultProjectTab(me));
 
   const [
     members,
@@ -135,29 +140,40 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
 
   const currency = finance?.currency ?? "EGP";
   const totals = totalsByCurrency(entries);
+  const collected = revenueOf(totals[currency]);
+  const profit = profitOf(totals[currency]);
   const due = outstanding(finance?.budget ?? null, currency, totals);
   const otherCurrencies = Object.keys(totals).filter((c) => c !== currency);
   const memberIds = new Set(members.map((m) => m.userId));
   const assignable = developers.filter((d) => !memberIds.has(d.id));
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
-      <div>
+    <div className="flex max-w-4xl flex-col gap-8">
+      <div className="flex flex-col gap-2">
         <Link href="/projects" className="text-sm text-muted-foreground hover:underline">
           {t("← Projects")}
         </Link>
-        <h1 className="mt-1 flex flex-wrap items-center gap-3 text-2xl font-semibold">
-          {project.name}
-          <Badge variant={project.status === "brief_submitted" ? "outline" : "secondary"}>
-            {t(PROJECT_STATUS_LABELS[project.status])}
-          </Badge>
-        </h1>
-        <p className="text-muted-foreground">
-          {project.clientName ? `${project.clientName} · ` : ""}
-          {t("Brief by {name} on {date}", { name: createdBy?.name ?? "—", date: fmt.dateTime(project.createdAt) })}
-        </p>
+        <PageHeader
+          title={
+            <span className="inline-flex flex-wrap items-center gap-3">
+              {project.name}
+              <Badge variant={project.status === "brief_submitted" ? "outline" : "secondary"}>
+                {t(PROJECT_STATUS_LABELS[project.status])}
+              </Badge>
+            </span>
+          }
+          description={
+            <>
+              {project.clientName ? `${project.clientName} · ` : ""}
+              {t("Brief by {name} on {date}", { name: createdBy?.name ?? "—", date: fmt.dateTime(project.createdAt) })}
+            </>
+          }
+        />
       </div>
 
+      <ProjectTabs projectId={project.id} tabs={tabs} active={tab} t={t} />
+
+      {tab === "brief" && (
       <Card>
         <CardHeader>
           <CardTitle>{t("Brief")}</CardTitle>
@@ -198,11 +214,13 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
           )}
         </CardContent>
       </Card>
+      )}
 
-      <FeedbackSection me={me} project={project} isMember={isMember} />
+      {tab === "feedback" && <FeedbackSection me={me} project={project} isMember={isMember} />}
 
-      <FilesSection me={me} project={project} isMember={isMember} />
+      {tab === "files" && <FilesSection me={me} project={project} isMember={isMember} />}
 
+      {tab === "development" && (
       <Card>
         <CardHeader>
           <CardTitle>{t("Development")}</CardTitle>
@@ -225,7 +243,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
             {members.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t("Nobody assigned yet.")}</p>
             ) : (
-              <ul className="divide-y rounded-lg border">
+              <ul className="divide-y border">
                 {members.map((m) => (
                   <li key={m.userId} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                     <span>{m.name}</span>
@@ -255,7 +273,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
             {milestoneRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t("No milestones.")}</p>
             ) : (
-              <ul className="divide-y rounded-lg border">
+              <ul className="divide-y border">
                 {milestoneRows.map((ms) => (
                   <li key={ms.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                     <span className={ms.status === "done" ? "text-muted-foreground line-through" : ""}>
@@ -291,9 +309,13 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
           <StatusActions me={me} project={project} isMember={isMember} />
         </CardContent>
       </Card>
+      )}
 
-      <WorkSections me={me} project={project} isMember={isMember} />
+      {tab === "development" && <WorkSections me={me} project={project} isMember={isMember} parts={["guide"]} />}
+      {tab === "requests" && <WorkSections me={me} project={project} isMember={isMember} parts={["requests"]} />}
+      {tab === "equipment" && <WorkSections me={me} project={project} isMember={isMember} parts={["equipment"]} />}
 
+      {tab === "brief" && (
       <Card>
         <CardHeader>
           <CardTitle>{t("Progress dates")}</CardTitle>
@@ -303,7 +325,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
           {reviews.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("No progress dates.")}</p>
           ) : (
-            <ul className="divide-y rounded-lg border">
+            <ul className="divide-y border">
               {reviews.map((r) => (
                 <li key={r.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                   <span>
@@ -325,8 +347,9 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
           {canEditInstallationDate(me) && <ProgressReviewForm projectId={project.id} />}
         </CardContent>
       </Card>
+      )}
 
-      {showSchedule && (
+      {tab === "installation" && showSchedule && (
         <Card>
           <CardHeader>
             <CardTitle>{t("Installation")}</CardTitle>
@@ -386,21 +409,21 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
         </Card>
       )}
 
-      {showFinance && (
+      {tab === "finance" && showFinance && (
         <Card>
           <CardHeader>
             <CardTitle>{t("Finance")}</CardTitle>
-            <CardDescription>{t("Hidden from developers and Operations.")}</CardDescription>
+            <CardDescription>
+              {t("Revenue is collections only. It stays at zero until a payment is recorded. Profit is revenue minus expenses.")}
+            </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-5">
-            <div className="grid gap-5 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-5">
               <Detail label={t("Budget")}>
                 <p className="text-lg font-semibold tabular-nums">{fmt.money(finance?.budget, currency)}</p>
               </Detail>
-              <Detail label={t("Received")}>
-                <p className="text-lg font-semibold tabular-nums">
-                  {fmt.money(totals[currency]?.received ?? 0, currency)}
-                </p>
+              <Detail label={t("Revenue")}>
+                <p className="text-lg font-semibold tabular-nums">{fmt.money(collected, currency)}</p>
               </Detail>
               <Detail label={t("Outstanding")}>
                 <p
@@ -414,15 +437,21 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
                   {fmt.money(totals[currency]?.expenses ?? 0, currency)}
                 </p>
               </Detail>
+              <Detail label={t("Profit")}>
+                <p className={`text-lg font-semibold tabular-nums ${profit < 0 ? "text-destructive" : ""}`}>
+                  {fmt.money(profit, currency)}
+                </p>
+              </Detail>
             </div>
             {otherCurrencies.length > 0 && (
               <p className="text-sm text-muted-foreground">
                 {t("Also recorded in other currencies (not included above):")}{" "}
                 {otherCurrencies
                   .map((c) =>
-                    t("{received} received, {expenses} expenses", {
-                      received: fmt.money(totals[c].received, c),
+                    t("{revenue} revenue, {expenses} expenses, {profit} profit", {
+                      revenue: fmt.money(revenueOf(totals[c]), c),
                       expenses: fmt.money(totals[c].expenses, c),
+                      profit: fmt.money(profitOf(totals[c]), c),
                     }),
                   )
                   .join("; ")}

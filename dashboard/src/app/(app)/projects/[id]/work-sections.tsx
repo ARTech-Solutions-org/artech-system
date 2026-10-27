@@ -24,6 +24,7 @@ import { GuideForm, NewRequestButton, RequestEquipmentForm, StatusButtons } from
 import { Detail, EditSection, SmallAction } from "./project-ui";
 
 type Project = typeof projects.$inferSelect;
+type WorkPart = "requests" | "equipment" | "guide";
 type Props = { me: Viewer; project: Project; isMember: boolean };
 type Move = { to: string; label: string; variant?: "default" | "outline" };
 
@@ -111,32 +112,42 @@ export async function CloseProjectActions({ me, project }: Omit<Props, "isMember
   );
 }
 
-export async function WorkSections({ me, project, isMember }: Props) {
+export async function WorkSections({
+  me,
+  project,
+  isMember,
+  parts = ["requests", "equipment", "guide"],
+}: Props & { parts?: WorkPart[] }) {
   const { t, fmt, locale } = await getI18n();
+  const want = (part: WorkPart) => parts.includes(part);
 
   const [flagRows, people, requests, items, [guide]] = await Promise.all([
-    loadFlags(and(eq(flags.projectId, project.id), visibleFlagsWhere(me))),
-    flagPeople(me),
-    db
-      .select({
-        id: equipmentRequests.id,
-        quantity: equipmentRequests.quantity,
-        status: equipmentRequests.status,
-        neededFrom: equipmentRequests.neededFrom,
-        neededUntil: equipmentRequests.neededUntil,
-        notes: equipmentRequests.notes,
-        requestedBy: equipmentRequests.requestedBy,
-        requesterName: users.name,
-        itemName: equipment.name,
-        itemCode: equipment.code,
-        createdAt: equipmentRequests.createdAt,
-      })
-      .from(equipmentRequests)
-      .innerJoin(equipment, eq(equipment.id, equipmentRequests.equipmentId))
-      .innerJoin(users, eq(users.id, equipmentRequests.requestedBy))
-      .where(eq(equipmentRequests.projectId, project.id))
-      .orderBy(desc(equipmentRequests.createdAt)),
-    canRequestEquipment(me)
+    want("requests")
+      ? loadFlags(and(eq(flags.projectId, project.id), visibleFlagsWhere(me)))
+      : Promise.resolve([]),
+    want("requests") ? flagPeople(me) : Promise.resolve([]),
+    want("equipment")
+      ? db
+          .select({
+            id: equipmentRequests.id,
+            quantity: equipmentRequests.quantity,
+            status: equipmentRequests.status,
+            neededFrom: equipmentRequests.neededFrom,
+            neededUntil: equipmentRequests.neededUntil,
+            notes: equipmentRequests.notes,
+            requestedBy: equipmentRequests.requestedBy,
+            requesterName: users.name,
+            itemName: equipment.name,
+            itemCode: equipment.code,
+            createdAt: equipmentRequests.createdAt,
+          })
+          .from(equipmentRequests)
+          .innerJoin(equipment, eq(equipment.id, equipmentRequests.equipmentId))
+          .innerJoin(users, eq(users.id, equipmentRequests.requestedBy))
+          .where(eq(equipmentRequests.projectId, project.id))
+          .orderBy(desc(equipmentRequests.createdAt))
+      : Promise.resolve([]),
+    want("equipment") && canRequestEquipment(me)
       ? db
           .select({
             id: equipment.id,
@@ -149,7 +160,9 @@ export async function WorkSections({ me, project, isMember }: Props) {
           .from(equipment)
           .orderBy(asc(equipment.name))
       : Promise.resolve([]),
-    db.select().from(installations).where(eq(installations.projectId, project.id)),
+    want("guide")
+      ? db.select().from(installations).where(eq(installations.projectId, project.id))
+      : Promise.resolve([]),
   ]);
 
   const openFlags = flagRows.filter((f) => f.status === "open");
@@ -159,6 +172,7 @@ export async function WorkSections({ me, project, isMember }: Props) {
 
   return (
     <>
+      {want("requests") && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -190,7 +204,9 @@ export async function WorkSections({ me, project, isMember }: Props) {
           </div>
         </CardContent>
       </Card>
+      )}
 
+      {want("equipment") && (
       <Card>
         <CardHeader>
           <CardTitle>{t("Equipment")}</CardTitle>
@@ -270,7 +286,9 @@ export async function WorkSections({ me, project, isMember }: Props) {
           )}
         </CardContent>
       </Card>
+      )}
 
+      {want("guide") && (
       <Card>
         <CardHeader>
           <CardTitle>{t("Installation guide")}</CardTitle>
@@ -304,6 +322,7 @@ export async function WorkSections({ me, project, isMember }: Props) {
           )}
         </CardContent>
       </Card>
+      )}
     </>
   );
 }

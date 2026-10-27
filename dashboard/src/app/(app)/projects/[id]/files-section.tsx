@@ -57,7 +57,7 @@ export async function FilesSection({
 
         {storageOn && manage && <UploadFileForm projectId={project.id} />}
         {!storageOn && (
-          <p className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
+          <p className="border border-dashed px-3 py-2 text-sm text-muted-foreground">
             {t("Uploads are off until R2 keys are added to .env.local. Folders still appear below.")}
           </p>
         )}
@@ -73,7 +73,7 @@ export async function FilesSection({
                 </span>
               </h3>
               {inFolder.length > 0 && (
-                <ul className="divide-y rounded-lg border">
+                <ul className="divide-y border">
                   {inFolder.map((f) => (
                     <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
                       <div className="min-w-0">

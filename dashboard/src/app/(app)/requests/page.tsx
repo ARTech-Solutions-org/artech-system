@@ -1,6 +1,7 @@
 import { and, eq, gte, ne, sql } from "drizzle-orm";
 import Link from "next/link";
 import { flags } from "@/db/schema";
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/session";
 import { countMyOpenFlags, flagPeople, flagProjects, loadFlags, visibleFlagsWhere } from "@/lib/flags";
@@ -49,25 +50,21 @@ export default async function RequestsPage(props: PageProps<"/requests">) {
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`rounded-md px-3 py-1.5 text-sm ${active ? "bg-background font-medium shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+      className={`border-b-2 px-1 pb-2 text-sm ${active ? "border-foreground font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
     >
       {label}
     </Link>
   );
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{t("Requests")}</h1>
-          <p className="text-muted-foreground">
-            {t("Ask anyone on the team for something you need. They and their head get an email.")}
-          </p>
-        </div>
-        <NewRequestButton projects={projects} people={toPeople(people)} />
-      </div>
+    <div className="flex max-w-4xl flex-col gap-8">
+      <PageHeader
+        title={t("Requests")}
+        description={t("Ask anyone on the team for something you need. They and their head get an email.")}
+        actions={<NewRequestButton projects={projects} people={toPeople(people)} />}
+      />
 
-      <div className="flex w-fit gap-1 rounded-lg bg-muted p-1">
+      <div className="flex w-fit gap-6 border-b">
         {tab(
           "/requests",
           waiting > 0 ? t("Open ({count} waiting on you)", { count: waiting }) : t("Open"),

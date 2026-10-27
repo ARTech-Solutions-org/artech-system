@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useId } from "react";
+import { useActionState, useEffect, useId, useState, type ChangeEvent } from "react";
 import {
-  addFinanceEntry,
+  addFinanceEntries,
   addMembers,
   addMilestone,
   addProgressReview,
@@ -15,9 +15,13 @@ import {
 import { Field, Submit, useForm, type Values } from "@/components/form-fields";
 import { FormMessage, selectClass } from "@/components/form-message";
 import { useI18n } from "@/components/i18n-provider";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { financeEntryRowSchema, type FinanceEntryRow } from "@/lib/finance";
 import { CURRENCIES } from "@/lib/format";
+import { firstIssue, type Msg } from "@/lib/i18n";
 
 function CurrencySelect({ values, name = "currency" }: { values: Values; name?: string }) {
   const { t } = useI18n();
@@ -140,39 +144,185 @@ export function FinanceForm({ projectId, initial }: { projectId: string; initial
   );
 }
 
+type Draft = {
+  kind: "payment" | "expense";
+  amount: string;
+  currency: string;
+  entryDate: string;
+  description: string;
+  reference: string;
+};
+
 export function FinanceEntryForm({ projectId, defaultCurrency }: { projectId: string; defaultCurrency: string }) {
-  const { t } = useI18n();
+  const { t, fmt } = useI18n();
   const today = new Date().toISOString().slice(0, 10);
-  const f = useForm(addFinanceEntry, { kind: "payment", currency: defaultCurrency, entryDate: today });
+  const blank = (): Draft => ({
+    kind: "payment",
+    amount: "",
+    currency: defaultCurrency,
+    entryDate: today,
+    description: "",
+    reference: "",
+  });
+  const [draft, setDraft] = useState<Draft>(blank);
+  const [queue, setQueue] = useState<FinanceEntryRow[]>([]);
+  const [localError, setLocalError] = useState<Msg | null>(null);
+  const [state, formAction, pending] = useActionState(addFinanceEntries, undefined);
+
+  useEffect(() => {
+    if (!state?.success) return;
+    setQueue([]);
+    setDraft(blank());
+    setLocalError(null);
+  }, [state]);
+
+  const set =
+    (key: keyof Draft) =>
+    (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      setDraft((d) => ({ ...d, [key]: e.target.value }));
+      setLocalError(null);
+    };
+
+  const queueRow = () => {
+    const parsed = financeEntryRowSchema.safeParse(draft);
+    if (!parsed.success) {
+      setLocalError(firstIssue(parsed.error));
+      return;
+    }
+    setQueue((rows) => [...rows, parsed.data]);
+    setDraft((d) => ({ ...blank(), kind: d.kind, currency: d.currency, entryDate: d.entryDate }));
+    setLocalError(null);
+  };
+
   return (
-    <form key={f.key} action={f.formAction} className="grid gap-4 sm:grid-cols-3">
-      <input type="hidden" name="projectId" value={projectId} />
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`${projectId}-kind`}>{t("Type")}</Label>
-        <select id={`${projectId}-kind`} name="kind" defaultValue={f.values.kind ?? "payment"} className={selectClass}>
-          <option value="payment">{t("Payment received")}</option>
-          <option value="expense">{t("Expense")}</option>
-        </select>
+    <form
+      className="flex flex-col gap-4"
+      action={(formData) => {
+        const empty = !draft.amount.trim() && !draft.description.trim();
+        let rows = queue;
+        if (!empty) {
+          const parsed = financeEntryRowSchema.safeParse(draft);
+          if (!parsed.success) {
+            setLocalError(firstIssue(parsed.error));
+            return;
+          }
+          rows = [...queue, parsed.data];
+        }
+        if (!rows.length) {
+          setLocalError("Add at least one entry.");
+          return;
+        }
+        formData.set("projectId", projectId);
+        formData.set("entries", JSON.stringify(rows));
+        formAction(formData);
+      }}
+    >
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`${projectId}-kind`}>{t("Type")}</Label>
+          <select
+            id={`${projectId}-kind`}
+            value={draft.kind}
+            onChange={set("kind")}
+            className={selectClass}
+          >
+            <option value="payment">{t("Payment received")}</option>
+            <option value="expense">{t("Expense")}</option>
+          </select>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`${projectId}-amount`}>{t("Amount")}</Label>
+          <Input
+            id={`${projectId}-amount`}
+            inputMode="decimal"
+            value={draft.amount}
+            onChange={set("amount")}
+            placeholder="15000"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`${projectId}-currency`}>{t("Currency")}</Label>
+          <select
+            id={`${projectId}-currency`}
+            value={draft.currency}
+            onChange={set("currency")}
+            className={selectClass}
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`${projectId}-entryDate`}>{t("Date")}</Label>
+          <Input id={`${projectId}-entryDate`} type="date" value={draft.entryDate} onChange={set("entryDate")} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`${projectId}-description`}>{t("Description")}</Label>
+          <Input
+            id={`${projectId}-description`}
+            value={draft.description}
+            onChange={set("description")}
+            placeholder={t("First installment")}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`${projectId}-reference`}>{t("Reference (optional)")}</Label>
+          <Input
+            id={`${projectId}-reference`}
+            value={draft.reference}
+            onChange={set("reference")}
+            placeholder={t("Invoice / receipt no.")}
+          />
+        </div>
       </div>
-      <Field label={t("Amount")} name="amount" values={f.values} inputMode="decimal" required />
-      <CurrencySelect values={f.values} />
-      <Field label={t("Date")} name="entryDate" values={f.values} type="date" required />
-      <Field
-        label={t("Description")}
-        name="description"
-        values={f.values}
-        required
-        placeholder={t("First installment")}
-      />
-      <Field
-        label={t("Reference (optional)")}
-        name="reference"
-        values={f.values}
-        placeholder={t("Invoice / receipt no.")}
-      />
-      <div className="flex flex-col gap-2 sm:col-span-3">
-        <FormMessage state={f.state} />
-        <Submit pending={f.pending} label={t("Add entry")} pendingLabel={t("Adding…")} />
+
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" disabled={pending} onClick={queueRow}>
+          {t("Add")}
+        </Button>
+      </div>
+
+      {queue.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <div className="text-[11px] font-medium tracking-[0.16em] text-muted-foreground uppercase">
+            {t("To save ({count})", { count: queue.length })}
+          </div>
+          <ul className="divide-y border">
+            {queue.map((row, i) => (
+              <li key={`${row.kind}-${row.amount}-${row.description}-${i}`} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                <span className="flex min-w-0 flex-wrap items-center gap-2">
+                  <Badge variant={row.kind === "payment" ? "secondary" : "outline"}>
+                    {row.kind === "payment" ? t("Payment") : t("Expense")}
+                  </Badge>
+                  <span className="tabular-nums">
+                    {row.kind === "expense" ? "−" : ""}
+                    {fmt.money(row.amount, row.currency)}
+                  </span>
+                  <span className="truncate">{row.description}</span>
+                  <span className="text-muted-foreground">{fmt.date(row.entryDate)}</span>
+                </span>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="ghost"
+                  disabled={pending}
+                  onClick={() => setQueue((rows) => rows.filter((_, j) => j !== i))}
+                >
+                  {t("Remove")}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2">
+        {localError && <p className="text-sm text-destructive">{t(localError)}</p>}
+        <FormMessage state={state} />
+        <Submit pending={pending} label={t("Save")} pendingLabel={t("Saving…")} />
       </div>
     </form>
   );

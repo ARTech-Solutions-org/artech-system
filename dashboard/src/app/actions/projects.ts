@@ -16,6 +16,7 @@ import {
   users,
 } from "@/db/schema";
 import { audit } from "@/lib/audit";
+import { financeEntryRowSchema } from "@/lib/finance";
 import { requireUser } from "@/lib/auth/session";
 import { isUniqueViolation } from "@/lib/db-errors";
 import { CURRENCIES } from "@/lib/format";
@@ -43,11 +44,6 @@ const optionalDate = z
   .union([z.literal(""), z.iso.date("Enter a valid date.")])
   .optional()
   .transform((v) => v || null);
-
-const amount = z.preprocess(
-  (v) => (typeof v === "string" ? v.replace(/,/g, "").trim() : v),
-  z.string().regex(/^\d+(\.\d{1,2})?$/, "Enter an amount like 15000 or 15000.50."),
-);
 
 const optionalAmount = z.preprocess(
   (v) => (typeof v === "string" ? v.replace(/,/g, "").trim() : v),
@@ -200,39 +196,45 @@ export async function saveFinance(_: FormState, formData: FormData): Promise<For
   return { success: "Budget saved.", values };
 }
 
-const FinanceEntrySchema = z.object({
+const FinanceEntriesSchema = z.object({
   projectId,
-  kind: z.enum(["payment", "expense"], "Pick payment or expense."),
-  amount,
-  currency,
-  entryDate: z.iso.date("Enter the date."),
-  description: z.string().trim().min(2, "Describe the entry."),
-  reference: optionalText,
+  entries: z
+    .array(financeEntryRowSchema)
+    .min(1, "Add at least one entry.")
+    .max(100, "Too many entries at once."),
 });
 
-export async function addFinanceEntry(_: FormState, formData: FormData): Promise<FormState> {
+export async function addFinanceEntries(_: FormState, formData: FormData): Promise<FormState> {
   const me = await requireUser();
-  const values = formValues(formData);
-  if (!canManageFinance(me)) return { error: "Only Accounting can record payments and expenses.", values };
+  if (!canManageFinance(me)) return { error: "Only Accounting can record payments and expenses." };
 
-  const parsed = FinanceEntrySchema.safeParse(values);
-  if (!parsed.success) return { error: firstIssue(parsed.error), values };
-  if (!(await projectExists(parsed.data.projectId))) return { error: "Project not found.", values };
+  let entriesJson: unknown;
+  try {
+    entriesJson = JSON.parse(String(formData.get("entries") ?? ""));
+  } catch {
+    return { error: "Add at least one entry." };
+  }
 
-  const [created] = await db
-    .insert(financeEntries)
-    .values({ ...parsed.data, createdBy: me.id })
-    .returning({ id: financeEntries.id });
+  const parsed = FinanceEntriesSchema.safeParse({ projectId: formData.get("projectId"), entries: entriesJson });
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+  if (!(await projectExists(parsed.data.projectId))) return { error: "Project not found." };
 
-  await audit({
-    userId: me.id,
-    action: `add_${parsed.data.kind}`,
-    entity: "finance_entry",
-    entityId: created.id,
-    changes: parsed.data,
-  });
+  const rows = parsed.data.entries.map((row) => ({ ...row, projectId: parsed.data.projectId, createdBy: me.id }));
+  const created = await db.insert(financeEntries).values(rows).returning({ id: financeEntries.id, kind: financeEntries.kind });
+
+  await Promise.all(
+    created.map((row, i) =>
+      audit({
+        userId: me.id,
+        action: `add_${row.kind}`,
+        entity: "finance_entry",
+        entityId: row.id,
+        changes: parsed.data.entries[i],
+      }),
+    ),
+  );
   refresh();
-  return { success: parsed.data.kind === "payment" ? "Payment recorded." : "Expense recorded." };
+  return { success: "{count} entries saved.", vars: { count: created.length } };
 }
 
 export async function deleteFinanceEntry(formData: FormData) {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LinkedText } from "@/components/linked-text";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,12 +11,13 @@ import { PROJECT_STATUS_LABELS, type ProjectStatus } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { daysBetween, type InstallationRow, listInstallations, todayInCairo, whenLabel } from "@/lib/installations";
 import { canViewInstallationDate } from "@/lib/permissions";
+import { projectHref } from "@/lib/project-tabs";
 
 const STATUS_STYLES: Partial<Record<ProjectStatus, string>> = {
-  ready_for_installation: "bg-blue-100 text-blue-900",
-  installing: "bg-amber-100 text-amber-900",
-  installed: "bg-green-100 text-green-900",
-  completed: "bg-green-100 text-green-900",
+  ready_for_installation: "bg-white text-black",
+  installing: "bg-white/20 text-white",
+  installed: "bg-white/10 text-white",
+  completed: "bg-white/10 text-white",
 };
 const statusStyle = (s: ProjectStatus) => STATUS_STYLES[s] ?? "bg-muted text-foreground";
 
@@ -64,11 +66,8 @@ export default async function InstallationsPage({ searchParams }: PageProps<"/in
   }
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">{t("Installations")}</h1>
-        <p className="text-muted-foreground">{t("Real installation dates. Hidden from developers.")}</p>
-      </div>
+    <div className="flex max-w-6xl flex-col gap-8">
+      <PageHeader title={t("Installations")} description={t("Real installation dates. Hidden from developers.")} />
 
       {installing.length > 0 && (
         <Card>
@@ -79,7 +78,7 @@ export default async function InstallationsPage({ searchParams }: PageProps<"/in
             <ul className="divide-y">
               {installing.map((r) => (
                 <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-                  <Link href={`/projects/${r.id}`} className="font-medium underline-offset-4 hover:underline">
+                  <Link href={projectHref(r.id, "installation")} className="font-medium underline-offset-4 hover:underline">
                     {r.name}
                   </Link>
                   <span className="text-muted-foreground">
@@ -109,7 +108,7 @@ export default async function InstallationsPage({ searchParams }: PageProps<"/in
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
           <div className="overflow-x-auto">
-            <div className="grid min-w-2xl grid-cols-7 overflow-hidden rounded-lg border text-sm">
+            <div className="grid min-w-2xl grid-cols-7 overflow-hidden rounded-2xl border text-sm">
               {weekdays.map((w) => (
                 <div
                   key={w}
@@ -142,7 +141,7 @@ export default async function InstallationsPage({ searchParams }: PageProps<"/in
                           {byDay.get(day)?.map((r) => (
                             <Link
                               key={r.id}
-                              href={`/projects/${r.id}`}
+                              href={projectHref(r.id, "installation")}
                               title={t(PROJECT_STATUS_LABELS[r.status])}
                               dir="auto"
                               className={`truncate rounded px-1.5 py-0.5 text-xs font-medium hover:underline ${statusStyle(r.status)}`}
@@ -187,7 +186,7 @@ export default async function InstallationsPage({ searchParams }: PageProps<"/in
                         </div>
                       </TableCell>
                       <TableCell className="font-medium">
-                        <Link href={`/projects/${r.id}`} className="underline-offset-4 hover:underline">
+                        <Link href={projectHref(r.id, "installation")} className="underline-offset-4 hover:underline">
                           {r.name}
                         </Link>
                         {r.clientName && (
@@ -236,7 +235,7 @@ export default async function InstallationsPage({ searchParams }: PageProps<"/in
             <ul className="divide-y">
               {unscheduled.map((r) => (
                 <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-                  <Link href={`/projects/${r.id}`} className="font-medium underline-offset-4 hover:underline">
+                  <Link href={projectHref(r.id, "installation")} className="font-medium underline-offset-4 hover:underline">
                     {r.name}
                   </Link>
                   <span className="flex items-center gap-2 text-muted-foreground">

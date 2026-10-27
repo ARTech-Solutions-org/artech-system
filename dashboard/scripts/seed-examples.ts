@@ -21,6 +21,8 @@ type Example = {
   report?: string;
   budget?: number;
   equipment?: { code: string; quantity: number }[];
+  unassigned?: boolean;
+  completedDaysAgo?: number;
 };
 
 const STEPS =
@@ -119,6 +121,32 @@ const EXAMPLES: Example[] = [
     installInDays: null,
     budget: 40000,
   },
+  {
+    name: "Airport Wayfinding Kiosk",
+    client: "Cairo Airport",
+    description: "Touch kiosk for gates and shops. Brief just arrived from the client.",
+    status: "brief_submitted",
+    devDeadlineInDays: 25,
+    installInDays: 40,
+    location: "https://maps.google.com/?q=Cairo+International+Airport",
+    budget: 155000,
+    unassigned: true,
+  },
+  {
+    name: "Gallery Portrait Wall",
+    client: "Nour Gallery",
+    description: "Interactive portrait wall. Signed off last week.",
+    status: "completed",
+    devDeadlineInDays: -30,
+    installInDays: -10,
+    location: "https://maps.google.com/?q=Zamalek",
+    steps: STEPS,
+    withLeadTech: true,
+    installStatus: "done",
+    report: "Installed, tested, and signed off by the gallery manager.",
+    budget: 88000,
+    completedDaysAgo: 6,
+  },
 ];
 
 const dayOffset = (days: number) => {
@@ -128,7 +156,8 @@ const dayOffset = (days: number) => {
 };
 
 async function main() {
-  const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
+  const url = process.env.DATABASE_URL!;
+  const sql = postgres(url, /\.neon\.tech\b/.test(url) ? { max: 1, ssl: "require" } : { max: 1 });
 
   if (process.argv.includes("--remove")) {
     const removed = await sql`delete from projects where name like ${"%" + SUFFIX} returning name`;
@@ -138,9 +167,16 @@ async function main() {
   }
 
   const [admin] = await sql`select id from users where is_super_admin limit 1`;
-  const [dev] =
-    await sql`select id from users where department = 'development' and not is_head and status = 'active' limit 1`;
-  const [tech] = await sql`select id from users where department = 'operations' and status = 'active' limit 1`;
+  const developers = await sql<{ id: string }[]>`
+    select id from users
+    where department = 'development' and not is_head and status = 'active'
+    order by name`;
+  const [dev, dev2] = developers;
+  const [tech] = await sql`
+    select id from users
+    where department = 'operations' and not is_head and status = 'active'
+    order by name
+    limit 1`;
 
   for (const ex of EXAMPLES) {
     const name = ex.name + SUFFIX;
@@ -151,13 +187,19 @@ async function main() {
     }
 
     await sql.begin(async (tx) => {
+      const assignedAt = ex.unassigned ? null : new Date();
+      const completedAt =
+        ex.completedDaysAgo != null ? new Date(Date.now() - ex.completedDaysAgo * 86400_000) : null;
       const [project] = await tx`
-        insert into projects (name, client_name, description, status, dev_deadline, created_by, assigned_by, assigned_at)
+        insert into projects (name, client_name, description, status, dev_deadline, created_by, assigned_by, assigned_at, completed_at)
         values (${name}, ${ex.client}, ${ex.description}, ${ex.status}, ${dayOffset(ex.devDeadlineInDays)},
-                ${admin?.id ?? null}, ${admin?.id ?? null}, now())
+                ${admin?.id ?? null}, ${ex.unassigned ? null : (admin?.id ?? null)}, ${assignedAt}, ${completedAt})
         returning id`;
-      if (dev) {
+      if (dev && !ex.unassigned) {
         await tx`insert into project_members (project_id, user_id, role, added_by) values (${project.id}, ${dev.id}, 'lead', ${admin?.id ?? null})`;
+        if (dev2) {
+          await tx`insert into project_members (project_id, user_id, role, added_by) values (${project.id}, ${dev2.id}, 'member', ${admin?.id ?? null})`;
+        }
       }
       if (ex.budget) {
         await tx`insert into project_finance (project_id, budget, currency) values (${project.id}, ${ex.budget}, 'EGP')`;
@@ -186,6 +228,47 @@ async function main() {
     });
     console.log(`Added ${name}`);
   }
+
+  const [biz] = await sql`
+    select id from users where department = 'business' and is_head and status = 'active' order by name limit 1`;
+  const suppliers = [
+    {
+      company: "Delta Lighting",
+      person: "Sherif Kamal",
+      mobile: "01011112222",
+      address: "Obour City, Cairo",
+      kit: ["LED panels", "Truss"],
+    },
+    {
+      company: "Nile AV Rentals",
+      person: "Mona Adel",
+      mobile: "01033334444",
+      address: "Nasr City, Cairo",
+      kit: ["Projectors", "Speakers"],
+    },
+  ];
+  for (const s of suppliers) {
+    const [exists] = await sql`select id from suppliers where lower(name) = lower(${s.person})`;
+    if (exists) continue;
+    await sql`
+      insert into suppliers (company_name, name, mobile, address, equipment, created_by)
+      values (${s.company}, ${s.person}, ${s.mobile}, ${s.address}, ${s.kit}, ${admin?.id ?? null})`;
+    console.log(`Added supplier ${s.company}`);
+  }
+
+  if (dev && biz) {
+    const [proj] = await sql`select id from projects where name like ${"%" + SUFFIX} order by created_at desc limit 1`;
+    const [openFlag] = await sql`select id from flags where details = ${"Need the client's logo pack in SVG and PNG."} limit 1`;
+    if (proj && !openFlag) {
+      const [flag] = await sql`
+        insert into flags (project_id, type, details, raised_by, status)
+        values (${proj.id}, 'needs_assets', ${"Need the client's logo pack in SVG and PNG."}, ${dev.id}, 'open')
+        returning id`;
+      await sql`insert into flag_recipients (flag_id, user_id, status) values (${flag.id}, ${biz.id}, 'open')`;
+      console.log("Added an open request");
+    }
+  }
+
   await sql.end();
 }
 

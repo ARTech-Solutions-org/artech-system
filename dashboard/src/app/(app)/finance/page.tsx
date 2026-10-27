@@ -3,14 +3,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { financeEntries, projectFinance, projects } from "@/db/schema";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/lib/auth/session";
-import { outstanding, totalsByCurrency, type CurrencyTotals } from "@/lib/finance";
+import { outstanding, profitOf, revenueOf, totalsByCurrency, type CurrencyTotals } from "@/lib/finance";
 import { PROJECT_STATUS_LABELS } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { canViewBudget } from "@/lib/permissions";
+import { projectHref } from "@/lib/project-tabs";
 
 export default async function FinancePage() {
   const me = await requireUser();
@@ -64,31 +66,36 @@ export default async function FinancePage() {
   }
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">{t("Finance")}</h1>
-        <p className="text-muted-foreground">{t("Budgets, payments received and expenses for every project.")}</p>
-      </div>
+    <div className="flex max-w-6xl flex-col gap-8">
+      <PageHeader
+        title={t("Finance")}
+        description={t("Budget is the agreed amount. Revenue is what was collected. Profit is revenue minus expenses.")}
+      />
 
       {Object.keys(grand).length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Object.entries(grand).map(([c, g]) => (
             <Card key={c}>
               <CardHeader>
-                <CardTitle>{c}</CardTitle>
+                <CardTitle className="text-xs tracking-[0.18em] uppercase">{c}</CardTitle>
                 <CardDescription>{t("All projects")}</CardDescription>
+                <div
+                  className={`pt-2 text-3xl font-light tracking-tight tabular-nums ${g.received - g.expenses < 0 ? "text-destructive" : ""}`}
+                  dir="ltr"
+                >
+                  {fmt.money(g.received - g.expenses, c)}
+                </div>
+                <CardDescription>{t("Profit (revenue − expenses)")}</CardDescription>
               </CardHeader>
               <CardContent className="grid grid-cols-2 gap-2 text-sm">
                 <span className="text-muted-foreground">{t("Budgets")}</span>
                 <span className="text-end tabular-nums">{fmt.money(g.budget, c)}</span>
-                <span className="text-muted-foreground">{t("Received")}</span>
+                <span className="text-muted-foreground">{t("Revenue")}</span>
                 <span className="text-end tabular-nums">{fmt.money(g.received, c)}</span>
                 <span className="text-muted-foreground">{t("Outstanding")}</span>
                 <span className="text-end tabular-nums">{fmt.money(g.budget - g.received, c)}</span>
                 <span className="text-muted-foreground">{t("Expenses")}</span>
                 <span className="text-end tabular-nums">{fmt.money(g.expenses, c)}</span>
-                <span className="font-medium">{t("Net (received − expenses)")}</span>
-                <span className="text-end font-medium tabular-nums">{fmt.money(g.received - g.expenses, c)}</span>
               </CardContent>
             </Card>
           ))}
@@ -106,9 +113,10 @@ export default async function FinancePage() {
                   <TableHead>{t("Project")}</TableHead>
                   <TableHead>{t("Status")}</TableHead>
                   <TableHead className="text-end">{t("Budget")}</TableHead>
-                  <TableHead className="text-end">{t("Received")}</TableHead>
+                  <TableHead className="text-end">{t("Revenue")}</TableHead>
                   <TableHead className="text-end">{t("Outstanding")}</TableHead>
                   <TableHead className="text-end">{t("Expenses")}</TableHead>
+                  <TableHead className="text-end">{t("Profit")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -116,11 +124,13 @@ export default async function FinancePage() {
                   const c = r.currency ?? "EGP";
                   const totals = perProject.get(r.id)!;
                   const due = outstanding(r.budget, c, totals);
+                  const collected = revenueOf(totals[c]);
+                  const profit = profitOf(totals[c]);
                   const others = Object.keys(totals).filter((k) => k !== c);
                   return (
                     <TableRow key={r.id}>
                       <TableCell className="font-medium">
-                        <Link href={`/projects/${r.id}`} className="underline-offset-4 hover:underline">
+                        <Link href={projectHref(r.id, "finance")} className="underline-offset-4 hover:underline">
                           {r.name}
                         </Link>
                         {r.clientName && <div className="text-xs text-muted-foreground">{r.clientName}</div>}
@@ -134,13 +144,16 @@ export default async function FinancePage() {
                         <Badge variant="outline">{t(PROJECT_STATUS_LABELS[r.status])}</Badge>
                       </TableCell>
                       <TableCell className="text-end tabular-nums">{fmt.money(r.budget, c)}</TableCell>
-                      <TableCell className="text-end tabular-nums">{fmt.money(totals[c]?.received ?? 0, c)}</TableCell>
+                      <TableCell className="text-end tabular-nums">{fmt.money(collected, c)}</TableCell>
                       <TableCell
                         className={`text-end tabular-nums ${due !== null && due < 0 ? "text-destructive" : ""}`}
                       >
                         {due === null ? "—" : fmt.money(due, c)}
                       </TableCell>
                       <TableCell className="text-end tabular-nums">{fmt.money(totals[c]?.expenses ?? 0, c)}</TableCell>
+                      <TableCell className={`text-end tabular-nums ${profit < 0 ? "text-destructive" : ""}`}>
+                        {fmt.money(profit, c)}
+                      </TableCell>
                     </TableRow>
                   );
                 })}

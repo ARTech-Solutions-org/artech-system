@@ -79,7 +79,7 @@ export function LogFeedbackForm({
       <input type="hidden" name="projectId" value={projectId} />
 
       {ai && (
-        <div className="flex flex-col gap-2 rounded-lg border border-dashed p-3">
+        <div className="flex flex-col gap-2 border border-dashed p-3">
           <div className="flex items-center justify-between gap-2">
             <Label className="flex items-center gap-1.5">
               <Sparkles className="size-4" />
@@ -108,7 +108,7 @@ export function LogFeedbackForm({
 
       <div className="flex flex-col gap-3">
         {rows.map((r, i) => (
-          <div key={r.key} className="flex flex-col gap-2 rounded-lg border p-3">
+          <div key={r.key} className="flex flex-col gap-2 border p-3">
             <div className="flex items-center justify-between gap-2">
               <Label>{t("Item {n}", { n: i + 1 })}</Label>
               {rows.length > 1 && (
@@ -269,7 +269,7 @@ export function FeedbackItemActions({
   return (
     <div className="flex flex-col gap-2">
       {can.scope && (
-        <div className="flex flex-col gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+        <div className="flex flex-col gap-2 border border-amber-500/40 bg-amber-500/5 p-3">
           <Label>{t("Is this part of the project?")}</Label>
           <Textarea
             rows={2}
@@ -302,7 +302,7 @@ export function FeedbackItemActions({
       )}
 
       {can.decideDeadline && extraDays && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
+        <div className="flex flex-wrap items-center gap-2 border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
           <span className="me-auto">{t("Add {days} day(s) to the dev deadline?", { days: extraDays })}</span>
           <Button size="sm" disabled={pending} onClick={() => run({ kind: "deadline_decide", apply: true })}>
             {t("Apply")}

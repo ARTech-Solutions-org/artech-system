@@ -50,83 +50,80 @@ export async function Overview() {
     .map(countOf)
     .reduce((a, b) => a + b, 0);
 
-  const tiles: { label: Msg; value: string | number; href: string; tone: string }[] = [
-    { label: "Active projects", value: active, href: "/projects", tone: "bg-brand-black text-white" },
-    { label: "Open requests", value: openFlags.count, href: "/requests", tone: "bg-brand-graphite text-white" },
-    { label: "Open client feedback", value: feedback.count, href: "/projects", tone: "bg-card ring-1 ring-border" },
-    {
-      label: "Past dev deadline",
-      value: overdue,
-      href: "/projects",
-      tone: overdue > 0 ? "bg-destructive text-white" : "bg-card ring-1 ring-border",
-    },
-    {
-      label: "Equipment in use",
-      value: `${units.inUse} / ${units.total}`,
-      href: "/equipment",
-      tone: "bg-card ring-1 ring-border",
-    },
+  const tiles: { label: Msg; value: string | number; href: string; alert?: boolean }[] = [
+    { label: "Active projects", value: active, href: "/projects" },
+    { label: "Open requests", value: openFlags.count, href: "/requests" },
+    { label: "Open client feedback", value: feedback.count, href: "/projects" },
+    { label: "Past dev deadline", value: overdue, href: "/projects", alert: overdue > 0 },
+    { label: "Equipment in use", value: `${units.inUse} / ${units.total}`, href: "/equipment" },
   ];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("Overview")}</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-5">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {tiles.map((tile) => (
-            <Link
-              key={tile.label}
-              href={tile.href}
-              className={`rounded-md px-4 py-5 text-center transition-opacity hover:opacity-90 ${tile.tone}`}
-            >
-              <div className="text-3xl font-light" dir="ltr">
-                {tile.value}
-              </div>
-              <div className="mt-1 text-xs opacity-80">{t(tile.label)}</div>
-            </Link>
-          ))}
-        </div>
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {tiles.map((tile) => (
+          <Link
+            key={tile.label}
+            href={tile.href}
+            className={`rounded-2xl bg-card px-4 py-5 ring-1 ring-border transition-colors hover:ring-white/20 ${
+              tile.alert ? "text-destructive" : ""
+            }`}
+          >
+            <div className="font-heading text-3xl font-semibold tracking-tight" dir="ltr">
+              {tile.value}
+            </div>
+            <div className="mt-2 text-xs text-muted-foreground">{t(tile.label)}</div>
+          </Link>
+        ))}
+      </div>
 
-        <div>
-          <div className="mb-2 text-sm font-medium">{t("Pipeline")}</div>
-          <div className="flex flex-wrap gap-2 text-sm">
-            {PIPELINE.map((s) => (
-              <span key={s} className={`rounded-md border px-2 py-1 ${countOf(s) ? "" : "text-muted-foreground"}`}>
-                {t(PROJECT_STATUS_LABELS[s])} <span className="font-semibold">{countOf(s)}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {deadlines.length > 0 && (
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("Overview")}</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
           <div>
-            <div className="mb-2 text-sm font-medium">{t("Dev deadlines in the next 2 weeks")}</div>
-            <ul className="divide-y text-sm">
-              {deadlines.slice(0, 8).map((d) => {
-                const days = daysBetween(today, d.devDeadline!);
-                return (
-                  <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                    <div>
-                      <Link href={`/projects/${d.id}`} className="font-medium underline-offset-4 hover:underline">
-                        {d.name}
-                      </Link>
-                      <div className="text-muted-foreground">{t(PROJECT_STATUS_LABELS[d.status])}</div>
-                    </div>
-                    <div className="text-end">
-                      <div>{fmt.date(d.devDeadline)}</div>
-                      <div className={`text-xs ${days < 0 ? "text-destructive" : "text-muted-foreground"}`}>
-                        {whenLabel(t, days)}
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="mb-3 text-sm font-medium">{t("Pipeline")}</div>
+            <div className="flex flex-wrap gap-2 text-sm">
+              {PIPELINE.map((s) => (
+                <span
+                  key={s}
+                  className={`rounded-full px-2.5 py-1 ring-1 ${countOf(s) ? "ring-border" : "text-muted-foreground ring-border/50"}`}
+                >
+                  {t(PROJECT_STATUS_LABELS[s])} <span className="font-medium">{countOf(s)}</span>
+                </span>
+              ))}
+            </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+
+          {deadlines.length > 0 && (
+            <div>
+              <div className="mb-2 text-sm font-medium">{t("Dev deadlines in the next 2 weeks")}</div>
+              <ul className="divide-y divide-border text-sm">
+                {deadlines.slice(0, 8).map((d) => {
+                  const days = daysBetween(today, d.devDeadline!);
+                  return (
+                    <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                      <div>
+                        <Link href={`/projects/${d.id}`} className="font-medium underline-offset-4 hover:underline">
+                          {d.name}
+                        </Link>
+                        <div className="text-muted-foreground">{t(PROJECT_STATUS_LABELS[d.status])}</div>
+                      </div>
+                      <div className="text-end">
+                        <div>{fmt.date(d.devDeadline)}</div>
+                        <div className={`text-xs ${days < 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                          {whenLabel(t, days)}
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

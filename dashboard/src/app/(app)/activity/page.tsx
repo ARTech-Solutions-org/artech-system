@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/db";
 import { auditLog, projects, users } from "@/db/schema";
 import { selectClass } from "@/components/form-message";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -150,11 +151,8 @@ export default async function ActivityPage({ searchParams }: PageProps<"/activit
   };
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">{t("Activity")}</h1>
-        <p className="text-muted-foreground">{t("Every change made in the dashboard: who, what and when.")}</p>
-      </div>
+    <div className="flex max-w-6xl flex-col gap-8">
+      <PageHeader title={t("Activity")} description={t("Every change made in the dashboard: who, what and when.")} />
 
       <form className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1.5 text-sm">

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -42,15 +43,15 @@ export default async function UsersPage() {
   const departments = me.isSuperAdmin ? [...DEPARTMENTS] : [me.department!];
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">{t("Users")}</h1>
-        <p className="text-muted-foreground">
-          {me.isSuperAdmin
+    <div className="flex max-w-5xl flex-col gap-8">
+      <PageHeader
+        title={t("Users")}
+        description={
+          me.isSuperAdmin
             ? t("All departments")
-            : t("{department} department", { department: t(DEPARTMENT_LABELS[me.department!]) })}
-        </p>
-      </div>
+            : t("{department} department", { department: t(DEPARTMENT_LABELS[me.department!]) })
+        }
+      />
 
       <Card>
         <CardHeader>

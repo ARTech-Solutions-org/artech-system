@@ -5,12 +5,16 @@ config({ path: ".env.local" });
 
 const ITEMS = [
   { code: "PRN-01", name: "Printer", category: "Printing", quantity: 1 },
-  { code: "MQ3-01", name: "Meta Quest 3", category: "VR", quantity: 1 },
-  { code: "NFC-01", name: "NFC reader", category: "Sensors", quantity: 3 },
+  { code: "MQ3-01", name: "Meta Quest 3", category: "VR", quantity: 2 },
+  { code: "NFC-01", name: "NFC reader", category: "Sensors", quantity: 8 },
+  { code: "PC-01", name: "Show PC", category: "Computing", quantity: 3 },
+  { code: "FAN-01", name: "Hologram fan", category: "Display", quantity: 2 },
+  { code: "PRJ-01", name: "Short-throw projector", category: "Display", quantity: 2 },
 ];
 
 async function main() {
-  const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
+  const url = process.env.DATABASE_URL!;
+  const sql = postgres(url, /\.neon\.tech\b/.test(url) ? { max: 1, ssl: "require" } : { max: 1 });
   for (const item of ITEMS) {
     const rows = await sql`
       insert into equipment (code, name, category, quantity)

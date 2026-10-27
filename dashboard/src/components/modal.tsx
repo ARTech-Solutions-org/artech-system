@@ -27,17 +27,17 @@ export function Modal({
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:pt-16"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:pt-16"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-2xl rounded-xl border bg-background p-5 shadow-lg"
+        className="w-full max-w-2xl rounded-[var(--radius)] border bg-card p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{title}</h2>
+          <h2 className="text-lg font-medium tracking-tight">{title}</h2>
           <Button variant="ghost" size="icon" onClick={onClose} aria-label={t("Close")}>
             <X />
           </Button>

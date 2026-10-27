@@ -59,21 +59,27 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     .toUpperCase();
 
   return (
-    <div className="flex min-h-full flex-1 flex-col">
-      <header className="sticky top-0 z-30 flex h-14 shrink-0 border-b bg-card shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-        <Link href="/" className="flex w-56 shrink-0 items-center bg-brand-black px-5" aria-label="ARTECH">
+    <div className="flex min-h-full flex-1 bg-background">
+      <aside className="sticky top-0 flex h-svh w-64 shrink-0 flex-col overflow-y-auto border-e border-sidebar-border bg-sidebar text-sidebar-foreground">
+        <Link href="/" className="flex flex-col gap-3 px-6 pt-8 pb-6" aria-label="ARTECH">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/artech-wordmark-white.png" alt="ARTECH" className="h-4 w-auto" />
+          <span className="font-heading text-[9px] font-semibold tracking-[0.32em] text-white/35 uppercase">
+            {t("Live the experience")}
+          </span>
         </Link>
-        <div className="flex flex-1 items-center justify-end gap-2 px-5">
+        <SideNav items={items} />
+      </aside>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-16 shrink-0 items-center justify-end gap-3 border-b border-border px-5 sm:px-8">
           <LanguageSwitch />
-          <div className="mx-2 h-6 w-px bg-border" />
+          <div className="h-5 w-px bg-border" />
           <div className="flex items-center gap-3">
             <div className="text-end leading-tight whitespace-nowrap max-sm:hidden">
               <div className="text-sm font-medium">{me.name}</div>
-              <div className="text-xs text-muted-foreground">{t(roleTitle(me))}</div>
+              <div className="text-[11px] text-muted-foreground">{t(roleTitle(me))}</div>
             </div>
-            <span className="flex size-9 items-center justify-center rounded-full bg-brand-black text-xs font-semibold text-white">
+            <span className="flex size-9 items-center justify-center rounded-full bg-white text-[11px] font-semibold text-black">
               {initials}
             </span>
           </div>
@@ -82,17 +88,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
               {t("Sign out")}
             </Button>
           </form>
-        </div>
-      </header>
-      <div className="flex flex-1">
-        <aside className="sticky top-14 flex h-[calc(100vh-3.5rem)] w-56 shrink-0 flex-col overflow-y-auto bg-sidebar text-sidebar-foreground">
-          <div className="px-5 pt-5 pb-2 text-[11px] font-medium tracking-[0.2em] uppercase opacity-60">
-            {t("Navigation")}
-          </div>
-          <SideNav items={items} />
-          <div className="mt-auto px-5 py-4 text-[10px] tracking-[0.3em] uppercase opacity-40">Live the experience</div>
-        </aside>
-        <main className="min-w-0 flex-1 overflow-auto p-6">{children}</main>
+        </header>
+        <main className="min-w-0 flex-1 overflow-auto px-5 py-7 sm:px-8 lg:px-10 lg:py-9">{children}</main>
       </div>
     </div>
   );

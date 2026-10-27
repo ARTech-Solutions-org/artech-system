@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 
 export function EditSection({ label, open, children }: { label: string; open?: boolean; children: React.ReactNode }) {
   return (
-    <details open={open} className="group rounded-lg border p-4">
+    <details open={open} className="group border p-4">
       <summary className="cursor-pointer text-sm font-medium select-none">{label}</summary>
       <div className="mt-4">{children}</div>
     </details>
@@ -12,7 +12,7 @@ export function EditSection({ label, open, children }: { label: string; open?: b
 export function Detail({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{label}</div>
+      <div className="text-[11px] font-medium tracking-[0.16em] text-muted-foreground uppercase">{label}</div>
       {children}
     </div>
   );

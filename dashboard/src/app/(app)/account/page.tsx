@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/session";
 import { getI18n } from "@/lib/i18n/server";
@@ -9,11 +10,11 @@ export default async function AccountPage() {
   const { t } = await getI18n();
 
   return (
-    <div className="flex max-w-md flex-col gap-6">
-      <h1 className="text-2xl font-semibold">{t("Account")}</h1>
+    <div className="flex max-w-md flex-col gap-8">
+      <PageHeader title={t("Account")} />
 
       {me.mustChangePassword && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+        <div className="border border-foreground/20 bg-card p-4 text-sm">
           {t("You are using a temporary password. Choose a new one to continue.")}
         </div>
       )}

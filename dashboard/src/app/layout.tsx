@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, IBM_Plex_Sans_Arabic, Syne } from "next/font/google";
 import { I18nProvider } from "@/components/i18n-provider";
 import { getI18n } from "@/lib/i18n/server";
@@ -29,6 +29,11 @@ const plexArabic = IBM_Plex_Sans_Arabic({
 export const metadata: Metadata = {
   title: "ARTECH Studio OS",
   description: "Projects, team, equipment and installations",
+};
+
+export const viewport: Viewport = {
+  colorScheme: "dark",
+  themeColor: "#121212",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {

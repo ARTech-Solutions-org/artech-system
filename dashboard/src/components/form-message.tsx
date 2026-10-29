@@ -11,4 +11,4 @@ export function FormMessage({ state }: { state: FormState }) {
 }
 
 export const selectClass =
-  "h-9 w-full rounded-[var(--radius)] border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50";
+  "h-9 w-full rounded-[var(--radius)] border border-input bg-card px-2.5 text-sm text-foreground outline-none scheme-dark focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50";

@@ -127,14 +127,21 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    color-scheme: dark;
+    @apply font-sans;
+  }
   body {
     @apply bg-background text-foreground;
   }
-  html {
-    @apply font-sans;
-  }
   html:lang(ar) {
     font-family: var(--font-arabic), var(--font-geist-sans), sans-serif;
+  }
+  /* Native <select> menus on Windows stay light; without this, option text inherits white. */
+  select option,
+  select optgroup {
+    background-color: var(--card);
+    color: var(--foreground);
   }
 }
 
